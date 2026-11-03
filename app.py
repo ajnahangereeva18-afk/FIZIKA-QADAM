@@ -16,23 +16,38 @@ st.set_page_config(
 # 2. SUPABASE БАЙЛАНЫСЫ
 # =====================================
 
-try:
-    supabase_url = st.secrets["supabase"]["url"]
-    supabase_key = st.secrets["supabase"]["publishable_key"]
+# Клиентті әр қайта орындалғанда жаңадан құрмаймыз.
+# Ол Streamlit сессиясында сақталады.
 
-    supabase = create_client(
-        supabase_url,
-        supabase_key
-    )
+if "supabase_client" not in st.session_state:
 
-except Exception as e:
-    st.error("Supabase байланысы орнамады.")
-    st.caption(f"Қате түрі: {type(e).__name__}")
-    st.stop()
+    try:
+        supabase_url = st.secrets["supabase"]["url"]
+        supabase_key = st.secrets["supabase"]["publishable_key"]
+
+        st.session_state.supabase_client = create_client(
+            supabase_url,
+            supabase_key
+        )
+
+    except Exception as e:
+        st.error("Supabase байланысы орнамады.")
+        st.caption(f"Қате түрі: {type(e).__name__}")
+        st.stop()
+
+supabase = st.session_state.supabase_client
 
 
 # =====================================
-# 3. ДИЗАЙН
+# 3. СЕССИЯ
+# =====================================
+
+if "user" not in st.session_state:
+    st.session_state.user = None
+
+
+# =====================================
+# 4. ДИЗАЙН
 # =====================================
 
 st.markdown("""
@@ -71,14 +86,6 @@ div[data-testid="stExpander"] {
 
 
 # =====================================
-# 4. СЕССИЯ
-# =====================================
-
-if "user" not in st.session_state:
-    st.session_state.user = None
-
-
-# =====================================
 # 5. БАСТЫ ТАҚЫРЫП
 # =====================================
 
@@ -96,14 +103,13 @@ st.divider()
 
 
 # =====================================
-# 6. ФИЗИКА КУРСЫН КӨРСЕТУ ФУНКЦИЯСЫ
+# 6. ФИЗИКА КУРСЫН КӨРСЕТУ
 # =====================================
 
 def show_physics_course():
 
     st.header("📚 ФИЗИКА КУРСЫ")
 
-    # Оқушының сыныбы
     grade_options = [7, 8, 9, 10, 11]
 
     try:
@@ -126,7 +132,8 @@ def show_physics_course():
         key="course_grade"
     )
 
-    # 10–11 сыныптарға бағыт таңдау
+    # 10–11 сыныптарға оқу бағытын таңдау
+
     if selected_grade in [10, 11]:
 
         track_choice = st.selectbox(
@@ -151,6 +158,7 @@ def show_physics_course():
     st.divider()
 
     # Курсты Supabase-тен алу
+
     try:
 
         course_result = (
@@ -168,6 +176,12 @@ def show_physics_course():
             st.warning(
                 "Бұл сыныпқа арналған курс әзірге жарияланбаған."
             )
+
+            st.caption(
+                f"Тексерілген сынып: {selected_grade}, "
+                f"бағыт: {selected_track}"
+            )
+
             return
 
         course = course_result.data[0]
@@ -178,6 +192,7 @@ def show_physics_course():
             st.write(course["description"])
 
         # Курстың бөлімдерін алу
+
         units_result = (
             supabase.table("physics_units")
             .select("id, title, description, sort_order")
@@ -195,6 +210,7 @@ def show_physics_course():
         st.write(f"**Курс бөлімдері: {len(units)}**")
 
         # Әр бөлімді көрсету
+
         for number, unit in enumerate(units, start=1):
 
             with st.expander(
@@ -205,6 +221,7 @@ def show_physics_course():
                     st.write(unit["description"])
 
                 # Бөлім сабақтарын алу
+
                 lessons_result = (
                     supabase.table("physics_lessons")
                     .select(
@@ -237,10 +254,7 @@ def show_physics_course():
                             f"📘 {lesson_number}. {lesson['title']}"
                         ):
 
-                            # Оқу мақсаты
-                            if lesson.get(
-                                "learning_objective_code"
-                            ):
+                            if lesson.get("learning_objective_code"):
                                 st.caption(
                                     "Оқу мақсаты: "
                                     + lesson["learning_objective_code"]
@@ -251,12 +265,10 @@ def show_physics_course():
                                     lesson["learning_objective"]
                                 )
 
-                            # Теория
                             if lesson.get("theory"):
                                 st.markdown("### 📖 Теория")
                                 st.write(lesson["theory"])
 
-                            # Формулалар
                             formulas = lesson.get("formulas") or []
 
                             if formulas:
@@ -265,7 +277,6 @@ def show_physics_course():
                                 for formula in formulas:
                                     st.write(formula)
 
-                            # Мысалдар
                             examples = lesson.get("examples") or []
 
                             if examples:
@@ -281,7 +292,7 @@ def show_physics_course():
         )
 
         st.caption(
-            f"Қате түрі: {type(e).__name__}"
+            f"Қате түрі: {type(e).__name__}: {str(e)[:300]}"
         )
 
 
@@ -297,9 +308,7 @@ if st.session_state.user is not None:
         f"Қош келдіңіз, {user['fullname']}!"
     )
 
-    # ---------------------------------
-    # МҰҒАЛІМ ӨТІНІШІ
-    # ---------------------------------
+    # Мұғалім өтініші
 
     if (
         user["requested_role"] == "teacher"
@@ -316,9 +325,7 @@ if st.session_state.user is not None:
         st.write(f"Мектеп: {user['school']}")
         st.write(f"Пәні: {user['subject']}")
 
-    # ---------------------------------
-    # ОҚУШЫ КАБИНЕТІ
-    # ---------------------------------
+    # Оқушы кабинеті
 
     elif user["role"] == "student":
 
@@ -329,12 +336,10 @@ if st.session_state.user is not None:
 
         st.divider()
 
-        # Физика курсы
         show_physics_course()
 
         st.divider()
 
-        # Басқа бөлімдер
         st.subheader("Менің оқу бөлімдерім")
 
         col1, col2 = st.columns(2)
@@ -349,9 +354,7 @@ if st.session_state.user is not None:
             st.info("🧪 Виртуалды зертхана")
             st.info("📊 Менің жетістіктерім")
 
-    # ---------------------------------
-    # МҰҒАЛІМ КАБИНЕТІ
-    # ---------------------------------
+    # Мұғалім кабинеті
 
     elif user["role"] == "teacher":
 
@@ -373,6 +376,7 @@ if st.session_state.user is not None:
     st.divider()
 
     # Жүйеден шығу
+
     if st.button("ЖҮЙЕДЕН ШЫҒУ"):
 
         try:
@@ -381,6 +385,9 @@ if st.session_state.user is not None:
             pass
 
         st.session_state.user = None
+        st.session_state.pop("course_grade", None)
+        st.session_state.pop("course_track", None)
+
         st.rerun()
 
 
@@ -395,9 +402,7 @@ else:
         "📝 ТІРКЕЛУ"
     ])
 
-    # =================================
-    # 8.1 ЖҮЙЕГЕ КІРУ
-    # =================================
+    # Жүйеге кіру
 
     with login_tab:
 
@@ -463,6 +468,8 @@ else:
                                 "Пайдаланушы профилі табылмады."
                             )
 
+                            supabase.auth.sign_out()
+
                         else:
 
                             profile = profile_result.data[0]
@@ -477,6 +484,9 @@ else:
                                 "subject": profile.get("subject") or ""
                             }
 
+                            # Supabase клиенті мен оның auth
+                            # сессиясы session_state ішінде қалады.
+
                             st.rerun()
 
                 except Exception as e:
@@ -490,9 +500,7 @@ else:
                     )
 
 
-    # =================================
-    # 8.2 ТІРКЕЛУ
-    # =================================
+    # Тіркелу
 
     with register_tab:
 
