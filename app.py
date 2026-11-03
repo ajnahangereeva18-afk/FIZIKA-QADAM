@@ -53,11 +53,12 @@ with login:
         ["Оқушы", "Мұғалім"]
     )
 
-    username = st.text_input("Логин")
-    password = st.text_input(
-        "Құпиясөз",
-        type="password"
-    )
+   username = st.text_input("Логин", key="login_username")
+password = st.text_input(
+    "Құпиясөз",
+    type="password",
+    key="login_password"
+)
 
     st.button("КІРУ")
 
@@ -81,11 +82,12 @@ with register:
     else:
         detail = st.text_input("Пәні")
 
-    username = st.text_input("Логин")
-    password = st.text_input(
-        "Құпиясөз",
-        type="password"
-    )
+    username = st.text_input("Логин", key="register_username")
+password = st.text_input(
+    "Құпиясөз",
+    type="password",
+    key="register_password"
+)
 
     st.button("ТІРКЕЛУ")
 
