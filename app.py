@@ -28,19 +28,15 @@ try:
     config = get_config()
 
     # Әр пайдаланушының жеке Streamlit сессиясында клиент құрылады
-    if "supabase_client" not in st.session_state:
-        st.session_state.supabase_client = create_client(
-            config["url"],
-            config["key"]
-        )
-
-    supabase = st.session_state.supabase_client
-
-except Exception:
-    st.error(
-        "Supabase байланысын тексеріңіз. "
-        "Streamlit Secrets бөліміндегі мәліметтерді қараңыз."
+try:
+    config = get_config()
+    supabase = create_client(
+        config["url"],
+        config["publishable_key"]
     )
+except Exception as e:
+    st.error("Supabase байланысы орнамады.")
+    st.caption(f"Қате түрі: {type(e).__name__}")
     st.stop()
 
 
