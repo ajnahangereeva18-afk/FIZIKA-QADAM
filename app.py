@@ -1497,14 +1497,15 @@ if st.session_state.user is not None:
 
     selected_navigation = st.session_state.selected_page
 
+    
     if selected_navigation == "Басты бет":
         show_dashboard()
 
     elif selected_navigation == "Жалпы курс":
         show_physics_course()
 
-elif selected_navigation == "Есептер жинағы":
-    show_tasks_collection()
+    elif selected_navigation == "Есептер жинағы":
+        show_tasks_collection()
 
     elif selected_navigation == "Олимпиада есептері":
         show_placeholder(
@@ -1539,6 +1540,7 @@ elif selected_navigation == "Есептер жинағы":
 
     elif selected_navigation == "Менің профилім":
         show_profile()
+
 
     show_footer()
     show_floating_qadam_chat()
