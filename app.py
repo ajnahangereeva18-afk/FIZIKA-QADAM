@@ -1,707 +1,60 @@
-
-import html
-import streamlit as st
-import numpy as np
-import plotly.graph_objects as go
-from supabase import create_client
-from openai import OpenAI
-
 # =====================================================
-# 1. БЕТ БАПТАУЛАРЫ
-# =====================================================
-st.set_page_config(
-    page_title="FIZIKA QADAM",
-    page_icon="⚛️",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-# =====================================================
-# 2. SUPABASE БАЙЛАНЫСЫ
-# =====================================================
-if "supabase_client" not in st.session_state:
-    try:
-        supabase_url = st.secrets["supabase"]["url"]
-        supabase_key = st.secrets["supabase"]["publishable_key"]
-        st.session_state.supabase_client = create_client(
-            supabase_url, supabase_key
-        )
-    except Exception:
-        st.error("Supabase байланысы орнамады. Secrets баптауын тексеріңіз.")
-        st.stop()
-
-supabase = st.session_state.supabase_client
-
-# =====================================================
-# 3. SESSION STATE
-# =====================================================
-defaults = {
-    "user": None,
-    "navigation_widget": "Басты бет",
-    "qadam_chat_open": False,
-    "qadam_messages": [{
-        "role": "assistant",
-        "content": "Сәлем! Мен QADAM AI көмекшісімін. "
-                   "Физикадан сұрағыңды жаз — түсіндіремін "
-                   "немесе есепті қадамдап шығарамын."
-    }]
-}
-
-for key, value in defaults.items():
-    if key not in st.session_state:
-        st.session_state[key] = value
-
-# =====================================================
-# 4. ДИЗАЙН
-# =====================================================
-st.markdown("""
-<style>
-.stApp {
-    background: #F5F8FC;
-    color: #172B4D;
-}
-h1, h2, h3, h4, p, label {
-    color: #172B4D;
-}
-.hero-title {
-    font-size: 36px;
-    font-weight: 800;
-    color: #142B4A;
-}
-.hero-subtitle {
-    color: #718096;
-    font-size: 15px;
-}
-[data-testid="stSidebar"] {
-    background: #FFFFFF;
-    border-right: 1px solid #E8EDF4;
-}
-.stButton > button,
-.stFormSubmitButton > button {
-    background: #1769AA;
-    color: white;
-    border: none;
-    border-radius: 10px;
-    min-height: 42px;
-    font-weight: 600;
-}
-.stButton > button:hover,
-.stFormSubmitButton > button:hover {
-    background: #10558E;
-    color: white;
-}
-.info-card {
-    background: white;
-    border: 1px solid #E8EDF4;
-    border-radius: 15px;
-    padding: 20px;
-    min-height: 125px;
-}
-.main-banner {
-    background: linear-gradient(110deg,#FFFFFF,#EAF4FF);
-    border: 1px solid #DFEAF7;
-    border-radius: 20px;
-    padding: 28px;
-    margin-bottom: 20px;
-}
-.banner-label {
-    color: #1769AA;
-    font-weight: 700;
-    font-size: 12px;
-    letter-spacing: 1px;
-}
-.banner-title {
-    color: #142B4A;
-    font-size: 30px;
-    font-weight: 800;
-    margin-top: 9px;
-}
-.banner-text {
-    color: #64748B;
-    font-size: 15px;
-    margin-top: 7px;
-}
-.footer {
-    color: #94A3B8;
-    text-align: center;
-    font-size: 12px;
-    padding: 20px;
-}
-.physics-heading {
-    color:#1769AA;
-    font-size:12px;
-    font-weight:800;
-    letter-spacing:1.5px;
-}
-.st-key-qadam_chat_open {
-    position: fixed !important;
-    right: 18px !important;
-    bottom: 18px !important;
-    z-index: 999999 !important;
-    width: min(390px, calc(100vw - 28px)) !important;
-    background: #FFFFFF !important;
-    border: 1px solid #DCE7F2 !important;
-    border-radius: 18px !important;
-    padding: 12px !important;
-    box-shadow: 0 12px 40px rgba(20,43,74,.22) !important;
-}
-.st-key-qadam_chat_closed {
-    position: fixed !important;
-    right: 20px !important;
-    bottom: 20px !important;
-    z-index: 999999 !important;
-    width: 76px !important;
-    background: transparent !important;
-    padding: 0 !important;
-}
-.st-key-qadam_chat_closed .stButton > button {
-    width: 66px !important;
-    height: 66px !important;
-    min-height: 66px !important;
-    border-radius: 50% !important;
-    font-size: 25px !important;
-}
-@media (max-width: 600px) {
-    .st-key-qadam_chat_open {
-        right: 8px !important;
-        bottom: 8px !important;
-        width: calc(100vw - 16px) !important;
-    }
-}
-</style>
-""", unsafe_allow_html=True)
-
-# =====================================================
-# 5. ҚОСАЛҚЫ ФУНКЦИЯЛАР
-# =====================================================
-def show_header():
-    st.markdown("""
-    <div style="margin-bottom:20px;">
-        <div class="hero-title">⚛️ FIZIKA QADAM</div>
-        <div class="hero-subtitle">
-            Физикалық есептерді шешудің адаптивті цифрлық платформасы
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-
-def show_footer():
-    st.markdown("""
-    <div class="footer">
-        ⚛️ FIZIKA QADAM © 2026<br>
-        Физиканы түсін. Есепті шеш. Нәтижеге жет!
-    </div>
-    """, unsafe_allow_html=True)
-
-
-def go_to(section):
-    st.session_state.navigation_widget = section
-    st.rerun()
-
-
-def logout():
-    try:
-        supabase.auth.sign_out()
-    except Exception:
-        pass
-
-    st.session_state.user = None
-    st.session_state.navigation_widget = "Басты бет"
-    st.session_state.qadam_chat_open = False
-    st.session_state.qadam_messages = defaults["qadam_messages"].copy()
-    st.rerun()
-
-
-# =====================================================
-# 6. 3D МОДЕЛЬДЕРГЕ ОРТАҚ СТИЛЬ
-# =====================================================
-def style_3d_figure(fig, title):
-    fig.update_layout(
-        title={
-            "text": title,
-            "x": 0.5,
-            "xanchor": "center"
-        },
-        height=460,
-        margin=dict(l=0, r=0, t=55, b=0),
-        paper_bgcolor="white",
-        scene=dict(
-            bgcolor="white",
-            xaxis=dict(title="X", backgroundcolor="white"),
-            yaxis=dict(title="Y", backgroundcolor="white"),
-            zaxis=dict(title="Z", backgroundcolor="white"),
-            aspectmode="cube"
-        ),
-        showlegend=False
-    )
-    return fig
-
-
-# =====================================================
-# 7. АТОМ ҚҰРЫЛЫСЫ
-# =====================================================
-def atom_figure():
-    fig = go.Figure()
-    t = np.linspace(0, 2*np.pi, 200)
-
-    for plane in range(3):
-        if plane == 0:
-            x = 1.35*np.cos(t)
-            y = 1.35*np.sin(t)
-            z = 0*t
-        elif plane == 1:
-            x = 1.35*np.cos(t)
-            y = 0*t
-            z = 1.35*np.sin(t)
-        else:
-            x = 0*t
-            y = 1.35*np.cos(t)
-            z = 1.35*np.sin(t)
-
-        fig.add_trace(go.Scatter3d(
-            x=x, y=y, z=z,
-            mode="lines",
-            line=dict(color="#55A6E8", width=5)
-        ))
-
-    fig.add_trace(go.Scatter3d(
-        x=[0], y=[0], z=[0],
-        mode="markers",
-        marker=dict(size=22, color="#FF9F43")
-    ))
-
-    fig.add_trace(go.Scatter3d(
-        x=[1.35, -0.75, 0],
-        y=[0, 0.95, -1.35],
-        z=[0.25, 0.75, 0],
-        mode="markers",
-        marker=dict(
-            size=9,
-            color=["#1769AA", "#7B61FF", "#19A7A0"]
-        )
-    ))
-
-    return style_3d_figure(fig, "АТОМ ҚҰРЫЛЫСЫ • 3D модель")
-
-
-# =====================================================
-# 8. МАГНИТ ӨРІСІ
-# =====================================================
-def magnetic_figure():
-    fig = go.Figure()
-    t = np.linspace(0, 2*np.pi, 220)
-
-    for radius in [0.55, 0.85, 1.15, 1.45]:
-        x = radius*np.cos(t)
-        y = 0.72*radius*np.sin(t)
-        z = 0.42*np.sin(2*t)*(1.5-radius/2)
-
-        fig.add_trace(go.Scatter3d(
-            x=x, y=y, z=z,
-            mode="lines",
-            line=dict(color="#287BC1", width=5)
-        ))
-
-    fig.add_trace(go.Scatter3d(
-        x=[-1.6, 1.6],
-        y=[0, 0],
-        z=[0, 0],
-        mode="markers+text",
-        text=["N", "S"],
-        textposition="top center",
-        marker=dict(size=13, color=["#E65C5C", "#287BC1"])
-    ))
-
-    return style_3d_figure(fig, "МАГНИТ ӨРІСІ")
-
-
-# =====================================================
-# 9. МАТЕМАТИКАЛЫҚ МАЯТНИК
-# =====================================================
-def pendulum_figure(angle_degrees):
-    angle = np.deg2rad(angle_degrees)
-    length = 1.8
-
-    bob_x = length*np.sin(angle)
-    bob_z = -length*np.cos(angle)
-
-    fig = go.Figure()
-    arc = np.linspace(-np.deg2rad(55), np.deg2rad(55), 100)
-
-    fig.add_trace(go.Scatter3d(
-        x=length*np.sin(arc),
-        y=0*arc,
-        z=-length*np.cos(arc),
-        mode="lines",
-        line=dict(color="#9AB8D6", width=4, dash="dot")
-    ))
-
-    fig.add_trace(go.Scatter3d(
-        x=[0, bob_x],
-        y=[0, 0],
-        z=[0, bob_z],
-        mode="lines",
-        line=dict(color="#1769AA", width=7)
-    ))
-
-    fig.add_trace(go.Scatter3d(
-        x=[0], y=[0], z=[0],
-        mode="markers",
-        marker=dict(size=8, color="#17365D")
-    ))
-
-    fig.add_trace(go.Scatter3d(
-        x=[bob_x], y=[0], z=[bob_z],
-        mode="markers",
-        marker=dict(size=19, color="#FF9F43")
-    ))
-
-    return style_3d_figure(
-        fig,
-        f"МАТЕМАТИКАЛЫҚ МАЯТНИК • {angle_degrees}°"
-    )
-
-
-# =====================================================
-# 10. ЖАРЫҚ ДИСПЕРСИЯСЫ
-# =====================================================
-def prism_figure():
-    fig = go.Figure()
-
-    x = [0, 1.4, 0.7, 0, 1.4, 0.7]
-    y = [-0.7, -0.7, 0.7, -0.7, -0.7, 0.7]
-    z = [-0.6, -0.6, -0.6, 0.6, 0.6, 0.6]
-
-    fig.add_trace(go.Mesh3d(
-        x=x, y=y, z=z,
-        i=[0, 0, 0, 3, 3, 1, 1, 2],
-        j=[1, 2, 3, 4, 5, 4, 2, 5],
-        k=[2, 3, 1, 5, 4, 2, 5, 4],
-        color="#77B8E8",
-        opacity=0.48
-    ))
-
-    fig.add_trace(go.Scatter3d(
-        x=[-1.3, 0.05],
-        y=[0, 0],
-        z=[0, 0],
-        mode="lines",
-        line=dict(color="#F2B705", width=8)
-    ))
-
-    colors = [
-        "#E53935", "#FB8C00", "#FDD835",
-        "#43A047", "#1E88E5", "#5E35B1"
-    ]
-
-    for i, color in enumerate(colors):
-        yy = -0.48 + i*0.19
-
-        fig.add_trace(go.Scatter3d(
-            x=[1.1, 2.0],
-            y=[0.05, yy],
-            z=[0, 0.12*(i-2.5)],
-            mode="lines",
-            line=dict(color=color, width=6)
-        ))
-
-    return style_3d_figure(fig, "ЖАРЫҚ ДИСПЕРСИЯСЫ • ПРИЗМА")
-
-
-# =====================================================
-# 11. ФИЗИКАЛЫҚ 3D ЗЕРТТЕУ АЛАҢЫ
-# =====================================================
-def show_physics_world():
-    st.markdown(
-        '<div class="physics-heading">ЗЕРТТЕУ АЛАҢЫ • INTERACTIVE 3D</div>',
-        unsafe_allow_html=True
-    )
-    st.subheader("Физикалық құбылыстар әлемі")
-    st.caption(
-        "3D модельдерді тышқанмен айналдырып, "
-        "жақындатып немесе алыстатып көріңіз."
-    )
-
-    atom_tab, magnetic_tab, pendulum_tab, prism_tab = st.tabs([
-        "⚛️ Атом",
-        "🧲 Магнит өрісі",
-        "🕰️ Маятник",
-        "🌈 Жарық призмасы"
-    ])
-
-    with atom_tab:
-        st.plotly_chart(
-            atom_figure(),
-            use_container_width=True,
-            config={"displayModeBar": True}
-        )
-        st.caption(
-            "Атом құрылымын түсіндіруге арналған шартты модель."
-        )
-
-    with magnetic_tab:
-        st.plotly_chart(
-            magnetic_figure(),
-            use_container_width=True
-        )
-        st.caption("Магнит өрісінің шартты кеңістіктік көрінісі.")
-
-    with pendulum_tab:
-        angle = st.slider(
-            "Маятниктің ауытқу бұрышы",
-            min_value=-55,
-            max_value=55,
-            value=25,
-            step=5,
-            key="pendulum_angle"
-        )
-        st.plotly_chart(
-            pendulum_figure(angle),
-            use_container_width=True
-        )
-        st.caption("Бұрышты өзгертіп, маятниктің орнын бақылаңыз.")
-
-    with prism_tab:
-        st.plotly_chart(
-            prism_figure(),
-            use_container_width=True
-        )
-        st.caption("Ақ жарықтың түрлі түстерге жіктелу моделі.")
-
-
-# =====================================================
-# 12. QADAM AI ЖАСАНДЫ ИНТЕЛЛЕКТІ
-# =====================================================
-def ask_qadam_ai(messages, mode, grade):
-    try:
-        api_key = st.secrets["openai"]["api_key"]
-        client = OpenAI(api_key=api_key)
-
-        instructions = f"""
-Сен FIZIKA QADAM платформасының физика пәні бойынша көмекшісісің.
-
-Оқушы сыныбы: {grade}
-Жауап беру режимі: {mode}
-
-Міндеттерің:
-1. 7–11 сынып физикасын түсінікті тілмен түсіндіру.
-2. Есептерді кезең-кезеңімен шығару.
-3. Берілгенін, SI жүйесіне айналдыруды, формуланы,
-   есептеу жолын және жауабын көрсету.
-4. Формулалардағы физикалық шамаларды түсіндіру.
-5. Егер есептің шарты толық болмаса, нақтылау сұрағын қою.
-6. Тек физика пәніне қатысты сұрақтарға жауап беру.
-7. Қауіпті тәжірибелерге нұсқаулық бермеу.
-8. Жеке деректерді сұрамау.
-
-Жауапты қазақ тілінде бер.
-"""
-
-        response = client.responses.create(
-            model="gpt-5.5",
-            instructions=instructions,
-            input=messages[-10:],
-            store=False,
-            max_output_tokens=750
-        )
-
-        return response.output_text, None
-
-    except KeyError:
-        return None, (
-            "OpenAI API кілті қосылмаған. "
-            "Streamlit Secrets ішіндегі [openai] бөлімін тексеріңіз."
-        )
-    except Exception as e:
-        return None, f"AI сұрауын орындау мүмкін болмады: {type(e).__name__}"
-
-
-# =====================================================
-# 13. ҚАЛҚЫМАЛЫ QADAM AI ЧАТЫ
-# =====================================================
-def show_floating_qadam_chat():
-    if st.session_state.user is None:
-        return
-
-    if st.session_state.qadam_chat_open:
-
-        with st.container(key="qadam_chat_open"):
-            header_col, close_col = st.columns([5, 1])
-
-            with header_col:
-                st.markdown("**⚛️ QADAM AI**")
-                st.caption("Физика бойынша жеке көмекші")
-
-            with close_col:
-                if st.button("✕", key="qadam_close"):
-                    st.session_state.qadam_chat_open = False
-                    st.rerun()
-
-            mode = st.selectbox(
-                "Жауап беру режимі",
-                ["Екі режим", "Түсіндіруші", "Есеп шығарушы"],
-                key="qadam_mode"
-            )
-
-            with st.container(height=265, border=True):
-                for message in st.session_state.qadam_messages[-8:]:
-                    with st.chat_message(message["role"]):
-                        st.markdown(message["content"])
-
-            grade = st.session_state.user.get("grade") or "көрсетілмеген"
-
-            with st.form("qadam_chat_form", clear_on_submit=True):
-                question = st.text_input(
-                    "Сұрағыңды жаз",
-                    placeholder="Мысалы: Ньютонның екінші заңы деген не?",
-                    max_chars=1200
-                )
-                send = st.form_submit_button(
-                    "Жіберу",
-                    use_container_width=True
-                )
-
-            clear_col, note_col = st.columns([1, 2])
-
-            with clear_col:
-                if st.button("Тазарту", key="qadam_clear"):
-                    st.session_state.qadam_messages = [{
-                        "role": "assistant",
-                        "content": "Чат тазартылды. Жаңа сұрағыңды жаза бер!"
-                    }]
-                    st.rerun()
-
-            with note_col:
-                st.caption("Жеке деректерді жазбаңыз.")
-
-            if send:
-                if not question.strip():
-                    st.warning("Алдымен сұрағыңызды жазыңыз.")
-
-                elif sum(
-                    1 for m in st.session_state.qadam_messages
-                    if m["role"] == "user"
-                ) >= 20:
-                    st.warning(
-                        "Сұрақ шегіне жеттіңіз. "
-                        "Чатты тазалап жалғастырыңыз."
-                    )
-
-                else:
-                    st.session_state.qadam_messages.append({
-                        "role": "user",
-                        "content": question.strip()
-                    })
-
-                    answer, error = ask_qadam_ai(
-                        st.session_state.qadam_messages,
-                        mode,
-                        grade
-                    )
-
-                    if error:
-                        st.error(error)
-                    else:
-                        st.session_state.qadam_messages.append({
-                            "role": "assistant",
-                            "content": answer
-                        })
-                        st.rerun()
-
-    else:
-        with st.container(key="qadam_chat_closed"):
-            if st.button(
-                "💬",
-                key="qadam_open",
-                help="QADAM AI чатын ашу"
-            ):
-                st.session_state.qadam_chat_open = True
-                st.rerun()
-
-
-# =====================================================
-# 14. БАСТЫ БЕТ
-# =====================================================
-def show_dashboard():
-    st.markdown("""
-    <div class="main-banner">
-        <div class="banner-label">FIZIKA QADAM • БІЛІМ • ҒЫЛЫМ</div>
-        <div class="banner-title">Физиканы жаңа деңгейде меңгер!</div>
-        <div class="banner-text">
-            Теорияны түсін, формулаларды үйрен,
-            есептерді өз бетіңше шеш.
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.subheader("Платформа мүмкіндіктері")
-
-    cards = [
-        ("📚 Жалпы курс", "7–11 сыныптарға арналған физика курсы."),
-        ("🧮 Есептер жинағы", "Тақырыптық есептерді орындау."),
-        ("🏅 Олимпиада есептері", "Күрделі есептерді талдау."),
-        ("🧪 Виртуалды зертхана", "Физикалық құбылыстарды модельдеу."),
-        ("🧠 QADAM шешімі", "Есептерді қадамдап шығару."),
-        ("📝 Тест тапсырмалары", "Білім деңгейін тексеру.")
-    ]
-
-    cols = st.columns(3)
-
-    for i, (title, description) in enumerate(cards):
-        with cols[i % 3]:
-            st.markdown(
-                f"""
-                <div class="info-card">
-                    <h3>{title}</h3>
-                    <p>{description}</p>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-            if st.button(
-                "Ашу",
-                key=f"dashboard_card_{i}",
-                use_container_width=True
-            ):
-                go_to([
-                    "Жалпы курс",
-                    "Есептер жинағы",
-                    "Олимпиада есептері",
-                    "Виртуалды зертхана",
-                    "QADAM шешімі",
-                    "Тест тапсырмалары"
-                ][i])
-
-    st.divider()
-    show_physics_world()
-
-
-# =====================================================
-# 15. ЖАЛПЫ ФИЗИКА КУРСЫ
+# 8. ЖАЛПЫ ФИЗИКА КУРСЫ
 # =====================================================
 def show_physics_course():
+
     st.title("📚 Жалпы курс")
-    st.write("Сыныбыңызды таңдап, физика бөлімдерін ашыңыз.")
+
+    st.write(
+        "Өзіңіздің сыныбыңызға сәйкес курсты таңдап, "
+        "тақырыптарды ретімен меңгеріңіз."
+    )
+
+    grade_options = [7, 8, 9, 10, 11]
+
+    try:
+        profile_grade = int(
+            st.session_state.user.get("grade") or 7
+        )
+    except (TypeError, ValueError):
+        profile_grade = 7
+
+    grade_index = (
+        grade_options.index(profile_grade)
+        if profile_grade in grade_options
+        else 0
+    )
 
     selected_grade = st.selectbox(
-        "Сынып",
-        [7, 8, 9, 10, 11],
+        "Сыныпты таңдаңыз",
+        grade_options,
+        index=grade_index,
         key="course_grade"
     )
 
-    selected_track = "common"
-
     if selected_grade in [10, 11]:
-        selected_track = st.selectbox(
-            "Оқу бағыты",
-            ["jmb", "qgb"],
-            format_func=lambda x: (
-                "ЖМБ" if x == "jmb" else "ҚГБ"
-            ),
+
+        track_choice = st.selectbox(
+            "Оқу бағытын таңдаңыз",
+            [
+                "Жаратылыстану-математикалық бағыт (ЖМБ)",
+                "Қоғамдық-гуманитарлық бағыт (ҚГБ)"
+            ],
             key="course_track"
         )
 
+        selected_track = (
+            "jmb" if "ЖМБ" in track_choice else "qgb"
+        )
+
+    else:
+        selected_track = "common"
+        st.info("Жалпы білім беретін курс")
+
+    st.divider()
+
     try:
+
         course_result = (
             supabase.table("physics_courses")
             .select("id, grade, track, title, description")
@@ -738,7 +91,6 @@ def show_physics_course():
             supabase.table("physics_units")
             .select("id, title, description, sort_order")
             .eq("course_id", course["id"])
-            .eq("is_published", True)
             .order("sort_order")
             .execute()
         )
@@ -753,9 +105,11 @@ def show_physics_course():
         st.caption(f"Барлық бөлім саны: {len(units)}")
 
         for number, unit in enumerate(units, start=1):
+
             with st.expander(
                 f"📂 {number}. {unit['title']}"
             ):
+
                 if unit.get("description"):
                     st.write(unit["description"])
 
@@ -780,20 +134,27 @@ def show_physics_course():
                     )
 
                 for lesson_number, lesson in enumerate(
-                    lessons, start=1
+                    lessons,
+                    start=1
                 ):
+
                     with st.expander(
                         f"📘 {lesson_number}. {lesson['title']}"
                     ):
+
                         if lesson.get("learning_objective_code"):
                             st.caption(
                                 "Оқу мақсаты: "
-                                + str(lesson["learning_objective_code"])
+                                + str(
+                                    lesson["learning_objective_code"]
+                                )
                             )
 
                         if lesson.get("learning_objective"):
                             st.markdown("#### 🎯 Оқу мақсаты")
-                            st.write(lesson["learning_objective"])
+                            st.write(
+                                lesson["learning_objective"]
+                            )
 
                         if lesson.get("theory"):
                             st.markdown("#### 📖 Теория")
@@ -803,6 +164,7 @@ def show_physics_course():
 
                         if formulas:
                             st.markdown("#### 🧮 Формулалар")
+
                             for formula in formulas:
                                 st.info(str(formula))
 
@@ -810,45 +172,62 @@ def show_physics_course():
 
                         if examples:
                             st.markdown("#### 💡 Мысалдар")
+
                             for example in examples:
                                 st.write(example)
 
     except Exception as e:
+
         st.error(
             "Физика курсын жүктеу кезінде қате пайда болды."
         )
-        st.caption(type(e).__name__)
+
+        st.caption(
+            f"Қате түрі: {type(e).__name__}: {str(e)[:250]}"
+        )
 
 
 # =====================================================
-# 16. ПРОФИЛЬ
+# 9. ПРОФИЛЬ ЖӘНЕ ӘЗІРЛЕНУ ҮСТІНДЕГІ БӨЛІМДЕР
 # =====================================================
 def show_profile():
+
     user = st.session_state.user
 
     st.title("👤 Менің профилім")
 
-    st.markdown("""
-    <div class="main-banner">
-        <div class="banner-label">ЖЕКЕ АҚПАРАТ</div>
-        <div class="banner-title">Пайдаланушы профилі</div>
-        <div class="banner-text">
-            Жеке кабинетіңіздегі тіркелу мәліметтері.
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown(
+        '<div class="main-banner">'
+        '<div class="banner-label">ЖЕКЕ АҚПАРАТ</div>'
+        '<div class="banner-title">Пайдаланушы профилі</div>'
+        '<div class="banner-text">'
+        'Жеке кабинетіңіздегі тіркелу мәліметтері.'
+        '</div>'
+        '</div>',
+        unsafe_allow_html=True
+    )
 
-    st.write(f"**Аты-жөні:** {user.get('fullname') or ''}")
-    st.write(f"**Мектеп:** {user.get('school') or ''}")
-    st.write(f"**Рөлі:** {user.get('role') or ''}")
+    st.write(
+        f"**Аты-жөні:** {user.get('fullname') or ''}"
+    )
 
-    if user.get("role") == "student":
+    st.write(
+        f"**Мектеп:** {user.get('school') or ''}"
+    )
+
+    st.write(
+        f"**Рөлі:** {user.get('role') or ''}"
+    )
+
+    if user["role"] == "student":
         st.write(
             f"**Сыныбы:** {user.get('grade') or 'Көрсетілмеген'}"
         )
 
-    if user.get("role") == "teacher":
-        st.write(f"**Пәні:** {user.get('subject') or ''}")
+    if user["role"] == "teacher":
+        st.write(
+            f"**Пәні:** {user.get('subject') or ''}"
+        )
 
     if (
         user.get("requested_role") == "teacher"
@@ -859,17 +238,19 @@ def show_profile():
         )
 
 
-# =====================================================
-# 17. ӘЗІРЛЕНУ ҮСТІНДЕГІ БӨЛІМДЕР
-# =====================================================
 def show_placeholder(title, description):
+
     st.title(title)
 
     st.markdown(f"""
     <div class="main-banner">
         <div class="banner-label">FIZIKA QADAM</div>
-        <div class="banner-title">{html.escape(title)}</div>
-        <div class="banner-text">{html.escape(description)}</div>
+        <div class="banner-title">
+            {html.escape(title)}
+        </div>
+        <div class="banner-text">
+            {html.escape(description)}
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -880,7 +261,7 @@ def show_placeholder(title, description):
 
 
 # =====================================================
-# 18. НЕГІЗГІ МӘЗІР
+# 10. НЕГІЗГІ БЕТТЕР ЖӘНЕ SIDEBAR
 # =====================================================
 if st.session_state.user is not None:
 
@@ -899,6 +280,7 @@ if st.session_state.user is not None:
     ]
 
     with st.sidebar:
+
         st.markdown("""
         <div style="padding:10px 5px 25px 5px;">
             <div style="font-size:27px;font-weight:800;color:#1769AA;">
@@ -913,34 +295,33 @@ if st.session_state.user is not None:
         st.divider()
         st.caption("НЕГІЗГІ МӘЗІР")
 
-        current = st.session_state.navigation_widget
+        current = st.session_state.selected_page
 
         if current not in menu_options:
             current = "Басты бет"
+            st.session_state.selected_page = current
 
         selected = st.radio(
             "Навигация",
             menu_options,
             index=menu_options.index(current),
-            key="navigation_widget",
             label_visibility="collapsed"
         )
 
+        st.session_state.selected_page = selected
+
         st.divider()
 
-        st.markdown(
-            f"""
-            <div style="padding:10px 5px;">
-                <div style="font-size:12px;color:#94A3B8;">
-                    ЖҮЙЕГЕ КІРГЕН ПАЙДАЛАНУШЫ
-                </div>
-                <div style="font-weight:700;color:#172B4D;margin-top:5px;">
-                    {html.escape(str(user.get('fullname') or ''))}
-                </div>
+        st.markdown(f"""
+        <div style="padding:10px 5px;">
+            <div style="font-size:12px;color:#94A3B8;">
+                ЖҮЙЕГЕ КІРГЕН ПАЙДАЛАНУШЫ
             </div>
-            """,
-            unsafe_allow_html=True
-        )
+            <div style="font-weight:700;color:#172B4D;margin-top:5px;">
+                {html.escape(str(user.get('fullname') or ''))}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
         if st.button(
             "↪ Жүйеден шығу",
@@ -950,50 +331,52 @@ if st.session_state.user is not None:
 
     show_header()
 
-    if selected == "Басты бет":
+    selected_navigation = st.session_state.selected_page
+
+    if selected_navigation == "Басты бет":
         show_dashboard()
 
-    elif selected == "Жалпы курс":
+    elif selected_navigation == "Жалпы курс":
         show_physics_course()
 
-    elif selected == "Есептер жинағы":
+    elif selected_navigation == "Есептер жинағы":
         show_placeholder(
             "🧮 Есептер жинағы",
             "Физикалық есептерді тақырып және күрделілік деңгейі бойынша орындаңыз."
         )
 
-    elif selected == "Олимпиада есептері":
+    elif selected_navigation == "Олимпиада есептері":
         show_placeholder(
             "🏅 Олимпиада есептері",
             "Олимпиадалық деңгейдегі физика есептерін талдаңыз."
         )
 
-    elif selected == "Виртуалды зертхана":
+    elif selected_navigation == "Виртуалды зертхана":
         show_placeholder(
             "🧪 Виртуалды зертхана",
             "Физикалық тәжірибелер мен құбылыстардың интерактивті модельдері."
         )
         show_physics_world()
 
-    elif selected == "QADAM шешімі":
+    elif selected_navigation == "QADAM шешімі":
         show_placeholder(
             "🧠 QADAM шешімі",
             "Есептің берілгенін, формуласын және шешу жолын кезең-кезеңімен талдаңыз."
         )
 
-    elif selected == "Тест тапсырмалары":
+    elif selected_navigation == "Тест тапсырмалары":
         show_placeholder(
             "📝 Тест тапсырмалары",
             "Білім деңгейіңізді тақырыптық тест арқылы тексеріңіз."
         )
 
-    elif selected == "Менің жетістіктерім":
+    elif selected_navigation == "Менің жетістіктерім":
         show_placeholder(
             "🏆 Менің жетістіктерім",
             "Оқу барысындағы жетістіктеріңізді бақылаңыз."
         )
 
-    elif selected == "Менің профилім":
+    elif selected_navigation == "Менің профилім":
         show_profile()
 
     show_footer()
@@ -1001,15 +384,20 @@ if st.session_state.user is not None:
 
 
 # =====================================================
-# 19. ЖҮЙЕГЕ КІРУ ЖӘНЕ ТІРКЕЛУ
+# 11. ЖҮЙЕГЕ КІРУ ЖӘНЕ ТІРКЕЛУ
 # =====================================================
 else:
+
     show_header()
 
     st.markdown("""
     <div class="main-banner">
-        <div class="banner-label">БІЛІМ • ҒЫЛЫМ • ТЕХНОЛОГИЯ</div>
-        <div class="banner-title">Физиканы жаңа деңгейде меңгер!</div>
+        <div class="banner-label">
+            БІЛІМ • ҒЫЛЫМ • ТЕХНОЛОГИЯ
+        </div>
+        <div class="banner-title">
+            Физиканы жаңа деңгейде меңгер!
+        </div>
         <div class="banner-text">
             Теорияны түсін, формулаларды үйрен,
             есептерді өз бетіңше шеш.
@@ -1025,30 +413,43 @@ else:
         "📝 Тіркелу"
     ])
 
-    # -------------------------
+    # -----------------------------
     # ЖҮЙЕГЕ КІРУ
-    # -------------------------
+    # -----------------------------
     with login_tab:
+
         st.subheader("Жеке кабинетке кіру")
 
         with st.form("login_form"):
-            login_email = st.text_input("Электрондық пошта")
+
+            login_email = st.text_input(
+                "Электрондық пошта"
+            )
+
             login_password = st.text_input(
                 "Құпиясөз",
                 type="password"
             )
+
             login_button = st.form_submit_button(
                 "ЖҮЙЕГЕ КІРУ",
                 use_container_width=True
             )
 
         if login_button:
-            if not login_email.strip() or not login_password:
+
+            if (
+                not login_email.strip()
+                or not login_password
+            ):
                 st.warning(
                     "Email мен құпиясөзді енгізіңіз."
                 )
+
             else:
+
                 try:
+
                     response = supabase.auth.sign_in_with_password({
                         "email": login_email.strip(),
                         "password": login_password
@@ -1058,7 +459,9 @@ else:
 
                     if auth_user is None:
                         st.error("Пайдаланушы табылмады.")
+
                     else:
+
                         profile_result = (
                             supabase.table("profiles")
                             .select("*")
@@ -1067,37 +470,57 @@ else:
                         )
 
                         if not profile_result.data:
+
                             st.error(
                                 "Пайдаланушы профилі табылмады."
                             )
+
                             supabase.auth.sign_out()
 
                         else:
+
                             profile = profile_result.data[0]
 
                             st.session_state.user = {
                                 "id": str(auth_user.id),
-                                "fullname": profile.get("full_name") or "",
-                                "role": profile.get("role") or "student",
-                                "requested_role": profile.get("requested_role") or "student",
-                                "school": profile.get("school") or "",
+                                "fullname": (
+                                    profile.get("full_name") or ""
+                                ),
+                                "role": (
+                                    profile.get("role") or "student"
+                                ),
+                                "requested_role": (
+                                    profile.get("requested_role")
+                                    or "student"
+                                ),
+                                "school": (
+                                    profile.get("school") or ""
+                                ),
                                 "grade": profile.get("grade"),
-                                "subject": profile.get("subject") or ""
+                                "subject": (
+                                    profile.get("subject") or ""
+                                )
                             }
 
-                            st.session_state.navigation_widget = "Басты бет"
+                            st.session_state.selected_page = "Басты бет"
+
                             st.rerun()
 
                 except Exception as e:
+
                     st.error(
                         "Жүйеге кіру кезінде қате пайда болды."
                     )
-                    st.caption(type(e).__name__)
 
-    # -------------------------
+                    st.caption(
+                        f"Қате түрі: {type(e).__name__}"
+                    )
+
+    # -----------------------------
     # ТІРКЕЛУ
-    # -------------------------
+    # -----------------------------
     with register_tab:
+
         st.subheader("Жаңа аккаунт ашу")
 
         register_role = st.radio(
@@ -1108,26 +531,34 @@ else:
         )
 
         with st.form("register_form"):
+
             fullname = st.text_input("Аты-жөні")
+
             school = st.text_input("Мектеп атауы")
 
             if register_role == "Оқушы":
+
                 grade = st.selectbox(
                     "Сыныбы",
                     list(range(7, 12))
                 )
+
                 subject = ""
+
             else:
+
                 grade = None
                 subject = st.text_input("Пәні")
 
             register_email = st.text_input(
                 "Электрондық пошта"
             )
+
             register_password = st.text_input(
                 "Құпиясөз",
                 type="password"
             )
+
             confirm_password = st.text_input(
                 "Құпиясөзді қайталаңыз",
                 type="password"
@@ -1139,17 +570,26 @@ else:
             )
 
         if register_button:
+
             if not fullname.strip():
                 st.warning("Аты-жөніңізді енгізіңіз.")
 
             elif not school.strip():
                 st.warning("Мектеп атауын енгізіңіз.")
 
-            elif register_role == "Мұғалім" and not subject.strip():
+            elif (
+                register_role == "Мұғалім"
+                and not subject.strip()
+            ):
                 st.warning("Пәніңізді енгізіңіз.")
 
-            elif not register_email.strip() or "@" not in register_email:
-                st.warning("Дұрыс электрондық пошта енгізіңіз.")
+            elif (
+                not register_email.strip()
+                or "@" not in register_email
+            ):
+                st.warning(
+                    "Дұрыс электрондық пошта енгізіңіз."
+                )
 
             elif len(register_password) < 8:
                 st.warning(
@@ -1157,10 +597,14 @@ else:
                 )
 
             elif register_password != confirm_password:
-                st.error("Құпиясөздер сәйкес келмейді.")
+                st.error(
+                    "Құпиясөздер сәйкес келмейді."
+                )
 
             else:
+
                 try:
+
                     requested_role = (
                         "student"
                         if register_role == "Оқушы"
@@ -1174,7 +618,9 @@ else:
                             "data": {
                                 "full_name": fullname.strip(),
                                 "school": school.strip(),
-                                "grade": str(grade) if grade else "",
+                                "grade": (
+                                    str(grade) if grade else ""
+                                ),
                                 "subject": subject.strip(),
                                 "requested_role": requested_role
                             }
@@ -1182,20 +628,28 @@ else:
                     })
 
                     if response.user:
+
                         st.success(
                             "Тіркелу сұранысы қабылданды! "
                             "Электрондық поштаңызға келген "
-                            "растау сілтемесін ашыңыз."
+                            "растау сілтемесін ашыңыз. "
+                            "Содан кейін жүйеге кіре аласыз."
                         )
+
                     else:
+
                         st.warning(
                             "Тіркелу аяқталмады. Қайталап көріңіз."
                         )
 
                 except Exception as e:
+
                     st.error(
                         "Тіркелу кезінде қате пайда болды."
                     )
-                    st.caption(type(e).__name__)
+
+                    st.caption(
+                        f"Қате түрі: {type(e).__name__}"
+                    )
 
     show_footer()
