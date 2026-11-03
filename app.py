@@ -52,13 +52,27 @@ with login:
         "Қолданушы түрі",
         ["Оқушы", "Мұғалім"]
     )
-
    username = st.text_input("Логин", key="login_username")
-password = st.text_input(
-    "Құпиясөз",
-    type="password",
-    key="login_password"
-)
+
+with login:
+    st.subheader("Жеке кабинетке кіру")
+
+    role = st.selectbox(
+        "Қолданушы түрі",
+        ["Оқушы", "Мұғалім"],
+        key="login_role"
+    )
+
+    username = st.text_input(
+        "Логин",
+        key="login_username"
+    )
+
+    password = st.text_input(
+        "Құпиясөз",
+        type="password",
+        key="login_password"
+    )
 
     st.button("КІРУ")
 
@@ -71,23 +85,35 @@ with register:
         horizontal=True
     )
 
-    fullname = st.text_input("Аты-жөні")
-    school = st.text_input("Мектеп атауы")
+   with register:
+    st.subheader("Жаңа аккаунт ашу")
+
+    role = st.radio(
+        "Тіркелу түрі",
+        ["Оқушы", "Мұғалім"],
+        horizontal=True,
+        key="register_role"
+    )
+
+    fullname = st.text_input("Аты-жөні", key="fullname")
+    school = st.text_input("Мектеп атауы", key="school")
 
     if role == "Оқушы":
         detail = st.selectbox(
             "Сыныбы",
-            [f"{i}-сынып" for i in range(7, 12)]
+            [f"{i}-сынып" for i in range(7, 12)],
+            key="grade"
         )
     else:
-        detail = st.text_input("Пәні")
+        detail = st.text_input("Пәні", key="subject")
 
     username = st.text_input("Логин", key="register_username")
-password = st.text_input(
-    "Құпиясөз",
-    type="password",
-    key="register_password"
-)
+
+    password = st.text_input(
+        "Құпиясөз",
+        type="password",
+        key="register_password"
+    )
 
     st.button("ТІРКЕЛУ")
 
