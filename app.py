@@ -1,4 +1,967 @@
+import html
+import streamlit as st
+import numpy as np
+import plotly.graph_objects as go
+from openai import OpenAI
+from supabase import create_client
+
 # =====================================================
+# 1. БЕТ БАПТАУЛАРЫ
+# =====================================================
+st.set_page_config(
+    page_title="FIZIKA QADAM",
+    page_icon="⚛️",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# =====================================================
+# 2. SUPABASE БАЙЛАНЫСЫ
+# =====================================================
+if "supabase_client" not in st.session_state:
+    try:
+        supabase_url = st.secrets["supabase"]["url"]
+        supabase_key = st.secrets["supabase"]["publishable_key"]
+        st.session_state.supabase_client = create_client(
+            supabase_url, supabase_key
+        )
+    except Exception as e:
+        st.error(
+            "Supabase байланысы орнамады. "
+            "Streamlit Secrets баптауын тексеріңіз."
+        )
+        st.caption(f"Қате түрі: {type(e).__name__}")
+        st.stop()
+
+supabase = st.session_state.supabase_client
+
+if "user" not in st.session_state:
+    st.session_state.user = None
+
+if "selected_page" not in st.session_state:
+    st.session_state.selected_page = "Басты бет"
+
+if "qadam_chat_open" not in st.session_state:
+    st.session_state.qadam_chat_open = False
+
+if "qadam_messages" not in st.session_state:
+    st.session_state.qadam_messages = [
+        {
+            "role": "assistant",
+            "content": (
+                "Сәлем! Мен QADAM AI көмекшісімін. "
+                "Физикадан сұрағыңды жаз — тақырыпты "
+                "түсіндіремін немесе есепті қадамдап шығарамын."
+            )
+        }
+    ]
+
+# =====================================================
+# 3. PREMIUM WHITE ДИЗАЙНЫ
+# =====================================================
+st.markdown("""
+<style>
+.stApp {
+    background: #F5F8FC;
+    color: #172B4D;
+}
+
+h1, h2, h3, h4, p, label {
+    color: #172B4D;
+}
+
+.hero-title {
+    font-size: 36px;
+    font-weight: 800;
+    color: #142B4A;
+    letter-spacing: -1px;
+}
+
+.hero-subtitle {
+    color: #718096;
+    font-size: 15px;
+}
+
+[data-testid="stSidebar"] {
+    background: #FFFFFF;
+    border-right: 1px solid #E8EDF4;
+}
+
+[data-testid="stSidebar"] > div {
+    padding-top: 25px;
+}
+
+[data-testid="stSidebar"] .stRadio label {
+    padding: 9px 10px;
+    border-radius: 10px;
+    color: #43536B;
+    font-weight: 600;
+}
+
+[data-testid="stSidebar"] .stRadio label:hover {
+    background: #EDF5FF;
+}
+
+.stButton > button,
+.stFormSubmitButton > button {
+    background: #1769AA;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    min-height: 42px;
+    font-weight: 600;
+}
+
+.stButton > button:hover,
+.stFormSubmitButton > button:hover {
+    background: #10558E;
+    color: white;
+}
+
+.stTextInput input,
+.stSelectbox div[data-baseweb="select"] {
+    border-radius: 9px;
+}
+
+.info-card {
+    background: white;
+    border: 1px solid #E8EDF4;
+    border-radius: 15px;
+    padding: 20px;
+    min-height: 125px;
+    box-shadow: 0 3px 12px rgba(25,55,90,.04);
+}
+
+.info-card h3 {
+    font-size: 17px;
+    margin-bottom: 8px;
+    color: #172B4D;
+}
+
+.info-card p {
+    font-size: 13px;
+    color: #718096;
+    margin-bottom: 0;
+}
+
+.main-banner {
+    background: linear-gradient(110deg,#FFFFFF,#EAF4FF);
+    border: 1px solid #DFEAF7;
+    border-radius: 20px;
+    padding: 28px;
+    margin-bottom: 20px;
+}
+
+.banner-label {
+    color: #1769AA;
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 1px;
+}
+
+.banner-title {
+    color: #142B4A;
+    font-size: clamp(24px,3vw,34px);
+    font-weight: 800;
+    margin-top: 9px;
+}
+
+.banner-text {
+    color: #64748B;
+    font-size: 15px;
+    margin-top: 7px;
+}
+
+div[data-testid="stExpander"] {
+    background: white;
+    border: 1px solid #E5EBF2;
+    border-radius: 12px;
+    margin-bottom: 8px;
+}
+
+hr {
+    border-color: #E6ECF3;
+}
+
+.footer {
+    color: #94A3B8;
+    text-align: center;
+    font-size: 12px;
+    padding: 20px;
+}
+
+.physics-heading {
+    color: #1769AA;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+}
+
+/* Қалқымалы QADAM AI терезесі */
+.st-key-qadam_chat_open {
+    position: fixed !important;
+    right: 18px !important;
+    bottom: 18px !important;
+    z-index: 999999 !important;
+    width: min(390px, calc(100vw - 28px)) !important;
+    background: #FFFFFF !important;
+    border: 1px solid #DCE7F2 !important;
+    border-radius: 18px !important;
+    padding: 12px !important;
+    box-shadow: 0 12px 40px rgba(20,43,74,.22) !important;
+}
+
+.st-key-qadam_chat_closed {
+    position: fixed !important;
+    right: 20px !important;
+    bottom: 20px !important;
+    z-index: 999999 !important;
+    width: 76px !important;
+    background: transparent !important;
+    padding: 0 !important;
+}
+
+.st-key-qadam_chat_closed .stButton > button {
+    width: 66px !important;
+    height: 66px !important;
+    min-height: 66px !important;
+    border-radius: 50% !important;
+    font-size: 25px !important;
+    box-shadow: 0 8px 25px rgba(23,105,170,.35) !important;
+}
+
+@media (max-width: 600px) {
+    .st-key-qadam_chat_open {
+        right: 8px !important;
+        bottom: 8px !important;
+        width: calc(100vw - 16px) !important;
+    }
+}
+</style>
+""", unsafe_allow_html=True)
+
+# =====================================================
+# 4. ҚОСАЛҚЫ ФУНКЦИЯЛАР
+# =====================================================
+def show_footer():
+    st.markdown("""
+    <div class="footer">
+        ⚛️ FIZIKA QADAM © 2026<br>
+        Физиканы түсін. Есепті шеш. Нәтижеге жет!
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def show_header():
+    st.markdown("""
+    <div style="margin-bottom:20px;">
+        <div class="hero-title">⚛️ FIZIKA QADAM</div>
+        <div class="hero-subtitle">
+            Физикалық есептерді шешудің адаптивті цифрлық платформасы
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+def go_to(section):
+    st.session_state.selected_page = section
+    st.rerun()
+
+
+def logout():
+    try:
+        supabase.auth.sign_out()
+    except Exception:
+        pass
+
+    st.session_state.user = None
+    st.session_state.selected_page = "Басты бет"
+    st.session_state.qadam_chat_open = False
+    st.session_state.qadam_messages = []
+
+    for key in ["course_grade", "course_track"]:
+        st.session_state.pop(key, None)
+
+    st.rerun()
+
+
+# =====================================================
+# 5. ИНТЕРАКТИВТІ 3D ФИЗИКАЛЫҚ МОДЕЛЬДЕР
+# =====================================================
+def style_3d_figure(fig, title):
+    fig.update_layout(
+        title={
+            "text": title,
+            "x": 0.03,
+            "font": {"size": 17, "color": "#17365D"}
+        },
+        height=390,
+        margin=dict(l=0, r=0, t=48, b=0),
+        paper_bgcolor="#FFFFFF",
+        plot_bgcolor="#FFFFFF",
+        scene=dict(
+            xaxis=dict(visible=False),
+            yaxis=dict(visible=False),
+            zaxis=dict(visible=False),
+            bgcolor="#F7FBFF",
+            aspectmode="cube",
+            camera=dict(
+                eye=dict(x=1.55, y=1.55, z=1.25)
+            )
+        ),
+        showlegend=False
+    )
+    return fig
+
+
+def atom_figure():
+    t = np.linspace(0, 2*np.pi, 240)
+    fig = go.Figure()
+
+    for plane in range(3):
+        if plane == 0:
+            x = 1.35*np.cos(t)
+            y = 1.35*np.sin(t)
+            z = 0*t
+        elif plane == 1:
+            x = 1.35*np.cos(t)
+            y = 0*t
+            z = 1.35*np.sin(t)
+        else:
+            x = 0*t
+            y = 1.35*np.cos(t)
+            z = 1.35*np.sin(t)
+
+        fig.add_trace(
+            go.Scatter3d(
+                x=x, y=y, z=z,
+                mode="lines",
+                line=dict(color="#55A6E8", width=5)
+            )
+        )
+
+    fig.add_trace(
+        go.Scatter3d(
+            x=[0], y=[0], z=[0],
+            mode="markers",
+            marker=dict(
+                size=22,
+                color="#FF9F43",
+                line=dict(color="#D96B27", width=2)
+            )
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter3d(
+            x=[1.35, -0.75, 0],
+            y=[0, 0.95, -1.35],
+            z=[0.25, 0.75, 0.0],
+            mode="markers",
+            marker=dict(
+                size=9,
+                color=["#1769AA", "#7B61FF", "#19A7A0"],
+                line=dict(color="white", width=1)
+            )
+        )
+    )
+
+    return style_3d_figure(
+        fig, "АТОМ ҚҰРЫЛЫСЫ • 3D модель"
+    )
+
+
+def magnetic_figure():
+    fig = go.Figure()
+    t = np.linspace(0, 2*np.pi, 220)
+
+    for radius in [0.55, 0.85, 1.15, 1.45]:
+        x = radius*np.cos(t)
+        y = 0.72*radius*np.sin(t)
+        z = 0.42*np.sin(2*t) * (1.5-radius/2)
+
+        fig.add_trace(
+            go.Scatter3d(
+                x=x, y=y, z=z,
+                mode="lines",
+                line=dict(color="#287BC1", width=5)
+            )
+        )
+
+    fig.add_trace(
+        go.Scatter3d(
+            x=[-1.6, 1.6],
+            y=[0, 0],
+            z=[0, 0],
+            mode="markers+text",
+            text=["N", "S"],
+            textposition="top center",
+            marker=dict(
+                size=13,
+                color=["#E65C5C", "#287BC1"]
+            )
+        )
+    )
+
+    return style_3d_figure(
+        fig, "МАГНИТ ӨРІСІ • күш сызықтарының көрінісі"
+    )
+
+
+def pendulum_figure(angle_degrees):
+    angle = np.deg2rad(angle_degrees)
+    length = 1.8
+
+    bob_x = length*np.sin(angle)
+    bob_z = -length*np.cos(angle)
+
+    fig = go.Figure()
+
+    arc = np.linspace(
+        -np.deg2rad(55),
+        np.deg2rad(55),
+        100
+    )
+
+    fig.add_trace(
+        go.Scatter3d(
+            x=length*np.sin(arc),
+            y=0*arc,
+            z=-length*np.cos(arc),
+            mode="lines",
+            line=dict(color="#9AB8D6", width=4, dash="dot")
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter3d(
+            x=[0, bob_x],
+            y=[0, 0],
+            z=[0, bob_z],
+            mode="lines",
+            line=dict(color="#1769AA", width=7)
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter3d(
+            x=[0], y=[0], z=[0],
+            mode="markers",
+            marker=dict(size=8, color="#17365D")
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter3d(
+            x=[bob_x],
+            y=[0],
+            z=[bob_z],
+            mode="markers",
+            marker=dict(
+                size=19,
+                color="#FF9F43",
+                line=dict(color="#D96B27", width=2)
+            )
+        )
+    )
+
+    return style_3d_figure(
+        fig,
+        f"МАТЕМАТИКАЛЫҚ МАЯТНИК • бұрыш {angle_degrees}°"
+    )
+
+
+def prism_figure():
+    fig = go.Figure()
+
+    x = [0, 1.4, 0.7, 0, 1.4, 0.7]
+    y = [-0.7, -0.7, 0.7, -0.7, -0.7, 0.7]
+    z = [-0.6, -0.6, -0.6, 0.6, 0.6, 0.6]
+
+    fig.add_trace(
+        go.Mesh3d(
+            x=x, y=y, z=z,
+            i=[0, 0, 0, 3, 3, 1, 1, 2],
+            j=[1, 2, 3, 4, 5, 4, 2, 5],
+            k=[2, 3, 1, 5, 4, 2, 5, 4],
+            color="#77B8E8",
+            opacity=0.48,
+            flatshading=True
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter3d(
+            x=[-1.3, 0.05],
+            y=[0, 0],
+            z=[0, 0],
+            mode="lines",
+            line=dict(color="#F2B705", width=8)
+        )
+    )
+
+    colors = [
+        "#E53935", "#FB8C00", "#FDD835",
+        "#43A047", "#1E88E5", "#5E35B1"
+    ]
+
+    for i, color in enumerate(colors):
+        yy = -0.48 + i*0.19
+
+        fig.add_trace(
+            go.Scatter3d(
+                x=[1.1, 2.0],
+                y=[0.05, yy],
+                z=[0.0, 0.12*(i-2.5)],
+                mode="lines",
+                line=dict(color=color, width=6)
+            )
+        )
+
+    return style_3d_figure(
+        fig, "ЖАРЫҚТЫҢ ДИСПЕРСИЯСЫ • призма"
+    )
+
+
+def show_physics_world():
+    st.markdown(
+        '<div class="physics-heading">'
+        'ЗЕРТТЕУ АЛАҢЫ • INTERACTIVE 3D'
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+    st.subheader("Физикалық құбылыстар әлемі")
+    st.caption(
+        "3D модельдерді тышқанмен айналдырып, "
+        "жақындатып немесе алыстатып көріңіз."
+    )
+
+    atom_tab, magnetic_tab, pendulum_tab, prism_tab = st.tabs([
+        "⚛️ Атом",
+        "🧲 Магнит өрісі",
+        "🕰️ Маятник",
+        "🌈 Жарық призмасы"
+    ])
+
+    with atom_tab:
+        st.plotly_chart(
+            atom_figure(),
+            use_container_width=True,
+            config={"displayModeBar": True}
+        )
+        st.caption(
+            "Бұл — атом құрылымын түсіндіруге арналған шартты модель; "
+            "орбиталар нақты траектория емес."
+        )
+
+    with magnetic_tab:
+        st.plotly_chart(
+            magnetic_figure(),
+            use_container_width=True,
+            config={"displayModeBar": True}
+        )
+        st.caption(
+            "Магнит өрісінің кеңістіктегі көрінісі шартты түрде берілген."
+        )
+
+    with pendulum_tab:
+        angle = st.slider(
+            "Маятниктің ауытқу бұрышы",
+            min_value=-55,
+            max_value=55,
+            value=25,
+            step=5,
+            key="pendulum_angle"
+        )
+
+        st.plotly_chart(
+            pendulum_figure(angle),
+            use_container_width=True,
+            config={"displayModeBar": True}
+        )
+        st.caption(
+            "Бұрышты өзгертіп, маятниктің орнын бақылаңыз."
+        )
+
+    with prism_tab:
+        st.plotly_chart(
+            prism_figure(),
+            use_container_width=True,
+            config={"displayModeBar": True}
+        )
+        st.caption(
+            "Ақ жарықтың түрлі түстерге жіктелуі — "
+            "дисперсия құбылысының көрнекі моделі."
+        )
+        # =====================================================
+# 6. QADAM AI — OPENAI RESPONSES API
+# =====================================================
+QADAM_INSTRUCTIONS = """
+Сен FIZIKA QADAM платформасының қазақ тілінде сөйлейтін физика пәні көмекшісісің.
+Негізгі аудитория: 7–11 сынып оқушылары. Тек физикаға қатысты сұрақтарға жауап бер.
+Түсіндіруші режимде ұғымды қарапайым тілмен, күнделікті өмірден қауіпсіз мысалмен түсіндір.
+Есеп шығарушы режимде: Берілгені, ХБЖ-ға келтіру, Формула, Шешуі, Жауабы ретімен көрсет.
+Формуладағы әр шаманы түсіндір, өлшем бірліктерін жаз, есептеуді тексер.
+Егер есептің шарты толық болмаса, жетіспейтін мәліметті сұра; ойдан сан қоспа.
+Сенімді болмасаң, оны ашық айт. Оқушыны өз бетімен ойлануға жетелейтін бір қысқа тексеру сұрағын қос.
+Жеке деректерді сұрама және қажет етпе. Қауіпті тәжірибелерді орындауға нұсқаулық берме.
+Физикадан тыс сұрақ келсе, сыпайы түрде физика тақырыбына қайта бағытта.
+"""
+
+
+def ask_qadam_ai(messages, mode, grade):
+    try:
+        api_key = st.secrets["openai"]["api_key"]
+    except Exception:
+        return None, (
+            "OpenAI API кілті әлі бапталмаған. "
+            "Оны Streamlit Cloud → Settings → Secrets бөліміне "
+            "жеке енгізу қажет. Кілтті чатқа немесе GitHub-қа жазбаңыз."
+        )
+
+    if not api_key or not str(api_key).strip():
+        return None, (
+            "OpenAI API кілті бос. "
+            "Streamlit Secrets баптауын тексеріңіз."
+        )
+
+    mode_instruction = {
+        "Түсіндіруші": (
+            "Оқушының сұрағын тақырыпты түсіндіру ретінде қарастыр. "
+            "Қарапайым тіл мен мысал қолдан."
+        ),
+        "Есеп шығарушы": (
+            "Есептің толық шешімін ретімен көрсет: "
+            "Берілгені, ХБЖ, Формула, Шешуі, Жауабы."
+        ),
+        "Екі режим": (
+            "Алдымен ұғымды қысқаша түсіндір, содан кейін "
+            "қажет болса формуламен және қадамдық шешумен көрсет."
+        )
+    }[mode]
+
+    try:
+        client = OpenAI(
+            api_key=str(api_key).strip(),
+            timeout=30.0,
+            max_retries=1
+        )
+
+        response = client.responses.create(
+            model="gpt-5.5",
+            instructions=(
+                QADAM_INSTRUCTIONS
+                + f"\nОқушы сыныбы: {grade}."
+                + f"\nЖауап режимі: {mode}. {mode_instruction}"
+            ),
+            input=[
+                {
+                    "role": item["role"],
+                    "content": item["content"]
+                }
+                for item in messages[-10:]
+            ],
+            max_output_tokens=750,
+            store=False
+        )
+
+        answer = (
+            response.output_text
+            or "Жауапты дайындау мүмкін болмады."
+        ).strip()
+
+        return answer, None
+
+    except Exception as e:
+        return None, (
+            f"AI қызметіне қосылу кезінде қате шықты "
+            f"({type(e).__name__}). API баптауын және "
+            "интернет байланысын тексеріңіз."
+        )
+
+
+def show_floating_qadam_chat():
+    """Жүйеге кірген пайдаланушыға көрсетілетін қалқымалы чат."""
+
+    if st.session_state.user is None:
+        return
+
+    if st.session_state.qadam_chat_open:
+
+        with st.container(key="qadam_chat_open"):
+
+            header_col, close_col = st.columns([5, 1])
+
+            with header_col:
+                st.markdown("**⚛️ QADAM AI**")
+                st.caption("Физика бойынша жеке көмекші")
+
+            with close_col:
+                if st.button(
+                    "✕",
+                    key="qadam_close",
+                    help="Чатты жабу"
+                ):
+                    st.session_state.qadam_chat_open = False
+                    st.rerun()
+
+            mode = st.selectbox(
+                "Жауап беру режимі",
+                [
+                    "Екі режим",
+                    "Түсіндіруші",
+                    "Есеп шығарушы"
+                ],
+                key="qadam_mode"
+            )
+
+            with st.container(height=265, border=True):
+                for message in st.session_state.qadam_messages[-8:]:
+                    with st.chat_message(message["role"]):
+                        st.markdown(message["content"])
+
+            try:
+                grade = (
+                    st.session_state.user.get("grade")
+                    or "көрсетілмеген"
+                )
+            except Exception:
+                grade = "көрсетілмеген"
+
+            with st.form(
+                "qadam_chat_form",
+                clear_on_submit=True
+            ):
+                question = st.text_input(
+                    "Сұрағыңды жаз",
+                    placeholder=(
+                        "Мысалы: Ньютонның екінші заңы деген не?"
+                    ),
+                    max_chars=1200
+                )
+
+                send = st.form_submit_button(
+                    "Жіберу",
+                    use_container_width=True
+                )
+
+            clear_col, note_col = st.columns([1, 2])
+
+            with clear_col:
+                if st.button(
+                    "Тазарту",
+                    key="qadam_clear"
+                ):
+                    st.session_state.qadam_messages = [{
+                        "role": "assistant",
+                        "content": (
+                            "Чат тазартылды. "
+                            "Физикадан жаңа сұрағыңды жаза бер!"
+                        )
+                    }]
+                    st.rerun()
+
+            with note_col:
+                st.caption("Жеке деректерді жазбаңыз.")
+
+            if send:
+
+                if not question.strip():
+                    st.warning("Алдымен сұрағыңызды жазыңыз.")
+
+                elif sum(
+                    1 for m in st.session_state.qadam_messages
+                    if m["role"] == "user"
+                ) >= 20:
+                    st.warning(
+                        "Бұл сессиядағы сұрақ шегіне жеттіңіз. "
+                        "Чатты тазалап, жалғастыруға болады."
+                    )
+
+                else:
+                    st.session_state.qadam_messages.append({
+                        "role": "user",
+                        "content": question.strip()
+                    })
+
+                    answer, error = ask_qadam_ai(
+                        st.session_state.qadam_messages,
+                        mode,
+                        grade
+                    )
+
+                    if error:
+                        st.error(error)
+                    else:
+                        st.session_state.qadam_messages.append({
+                            "role": "assistant",
+                            "content": answer
+                        })
+                        st.rerun()
+
+    else:
+        with st.container(key="qadam_chat_closed"):
+
+            if st.button(
+                "💬",
+                key="qadam_open",
+                help="QADAM AI чатын ашу"
+            ):
+                st.session_state.qadam_chat_open = True
+                st.rerun()
+
+
+# =====================================================
+# 7. БАСТЫ БЕТ
+# =====================================================
+def show_dashboard():
+
+    user = st.session_state.user
+
+    safe_name = html.escape(
+        str(user.get("fullname") or "оқушы")
+    )
+
+    st.markdown(f"""
+    <div class="main-banner">
+        <div class="banner-label">
+            FIZIKA QADAM • ОҚУ ПЛАТФОРМАСЫ
+        </div>
+        <div class="banner-title">
+            Қош келдіңіз, {safe_name}!
+        </div>
+        <div class="banner-text">
+            Білім алуға, зерттеуге және жаңа жетістіктерге қадам жасаңыз.
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    show_physics_world()
+    st.divider()
+
+    if user["role"] == "student":
+
+        grade = user.get("grade") or "—"
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.markdown(
+                '<div class="info-card">'
+                '<h3>🎓 Менің сыныбым</h3>'
+                '<p>Сіздің оқу деңгейіңіз</p>'
+                '</div>',
+                unsafe_allow_html=True
+            )
+            st.metric("Сынып", f"{grade}")
+
+        with col2:
+            st.markdown(
+                '<div class="info-card">'
+                '<h3>⚛️ Жалпы курс</h3>'
+                '<p>7–11 сынып бағдарламасы</p>'
+                '</div>',
+                unsafe_allow_html=True
+            )
+            st.write("Физика пәні")
+
+        with col3:
+            st.markdown(
+                '<div class="info-card">'
+                '<h3>🧠 Оқу бағыты</h3>'
+                '<p>Теория және практикалық есептер</p>'
+                '</div>',
+                unsafe_allow_html=True
+            )
+            st.write("Жеке оқу")
+
+        st.divider()
+        st.subheader("📚 Оқу мүмкіндіктері")
+
+        cards = [
+            (
+                "⚛️ Жалпы курс",
+                "Теория, формулалар және тақырыптық сабақтар.",
+                "Жалпы курс"
+            ),
+            (
+                "🧮 Есептер жинағы",
+                "Физикалық есептерді деңгей бойынша орындау.",
+                "Есептер жинағы"
+            ),
+            (
+                "🏅 Олимпиада есептері",
+                "Күрделілігі жоғары есептермен дайындалу.",
+                "Олимпиада есептері"
+            ),
+            (
+                "🧪 Виртуалды зертхана",
+                "Физикалық құбылыстарды модельдеу.",
+                "Виртуалды зертхана"
+            ),
+            (
+                "🧠 QADAM шешімі",
+                "Есепті қадамдарға бөліп талдау.",
+                "QADAM шешімі"
+            ),
+            (
+                "🤖 QADAM AI",
+                "Физика сұрақтарын AI көмекшісімен талқылау.",
+                "QADAM AI"
+            )
+        ]
+
+        for start in range(0, len(cards), 3):
+
+            cols = st.columns(3)
+
+            for col, card in zip(
+                cols,
+                cards[start:start+3]
+            ):
+
+                title, description, target = card
+
+                with col:
+
+                    st.markdown(
+                        f'<div class="info-card">'
+                        f'<h3>{html.escape(title)}</h3>'
+                        f'<p>{html.escape(description)}</p>'
+                        f'</div>',
+                        unsafe_allow_html=True
+                    )
+
+                    if st.button(
+                        "Ашу",
+                        key=f"dashboard_{target}",
+                        use_container_width=True
+                    ):
+
+                        if target == "QADAM AI":
+                            st.session_state.qadam_chat_open = True
+                            st.rerun()
+                        else:
+                            go_to(target)
+
+    elif user["role"] == "teacher":
+
+        st.subheader("👩‍🏫 Мұғалім кабинеті")
+
+        st.markdown(f"""
+        <div class="info-card">
+            <h3>Мұғалім туралы ақпарат</h3>
+            <p>Мектеп: {html.escape(str(user.get('school') or ''))}</p>
+            <p>Пәні: {html.escape(str(user.get('subject') or ''))}</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.info(
+            "Оқушыларды басқару, тапсырма беру және оқу нәтижелерін "
+            "бақылау бөлімдері кезең-кезеңімен қосылады."
+        )
+        # =====================================================
 # 8. ЖАЛПЫ ФИЗИКА КУРСЫ
 # =====================================================
 def show_physics_course():
