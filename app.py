@@ -1174,19 +1174,12 @@ def show_tasks_collection():
 
     with col2:
         if grade in [10, 11]:
-
             direction_name = st.selectbox(
                 "Оқу бағыты",
                 ["ЖМБ", "ҚГБ"],
                 key="tasks_direction"
             )
-
-            track = (
-                "jmb"
-                if direction_name == "ЖМБ"
-                else "qgb"
-            )
-
+            track = "jmb" if direction_name == "ЖМБ" else "qgb"
         else:
             track = "common"
             st.text_input(
@@ -1198,11 +1191,10 @@ def show_tasks_collection():
     st.divider()
 
     try:
-
-        # 1. КУРСТЫ ЖҮКТЕУ
+        # 1. Курсты жүктеу
         course_result = (
             supabase.table("physics_courses")
-            .select("id, grade, track, title")
+            .select("id")
             .eq("grade", grade)
             .eq("track", track)
             .eq("is_published", True)
@@ -1211,14 +1203,12 @@ def show_tasks_collection():
         )
 
         if not course_result.data:
-            st.warning(
-                "Бұл сыныпқа жарияланған курс табылмады."
-            )
+            st.warning("Бұл сыныпқа жарияланған курс табылмады.")
             return
 
         course_id = course_result.data[0]["id"]
 
-        # 2. БӨЛІМДЕРДІ ЖҮКТЕУ
+        # 2. Бөлімдерді жүктеу
         units_result = (
             supabase.table("physics_units")
             .select("id, title, sort_order")
@@ -1244,19 +1234,12 @@ def show_tasks_collection():
             key="tasks_unit"
         )
 
-        # 3. ТАҢДАЛҒАН БӨЛІМНІҢ САБАҚТАРЫН ЖҮКТЕУ
         if unit_options[selected_unit] is not None:
-
-            selected_unit_ids = [
-                unit_options[selected_unit]
-            ]
-
+            selected_unit_ids = [unit_options[selected_unit]]
         else:
+            selected_unit_ids = [unit["id"] for unit in units]
 
-            selected_unit_ids = [
-                unit["id"] for unit in units
-            ]
-
+        # 3. Сабақтарды жүктеу
         lessons_result = (
             supabase.table("physics_lessons")
             .select("id, unit_id, title")
@@ -1268,21 +1251,18 @@ def show_tasks_collection():
         lessons = lessons_result.data or []
 
         if not lessons:
-            st.info(
-                "Бұл бөлімге жарияланған сабақтар енгізілмеген."
-            )
+            st.info("Бұл бөлімде жарияланған сабақтар жоқ.")
             return
 
-        lesson_ids = [
-            lesson["id"] for lesson in lessons
-        ]
+        lesson_ids = [lesson["id"] for lesson in lessons]
 
         lesson_titles = {
             lesson["id"]: lesson["title"]
             for lesson in lessons
         }
 
-        # 4. ЕСЕПТЕРДІ ЖҮКТЕУ
+        # 4. Есептерді жүктеу
+        # correct_answer және explanation әдейі сұралмайды
         tasks_result = (
             supabase.table("physics_tasks")
             .select(
@@ -1297,87 +1277,86 @@ def show_tasks_collection():
 
         tasks = tasks_result.data or []
 
-        # 5. ІЗДЕУ
+        # 5. Іздеу
         search_text = st.text_input(
             "🔍 Есеп іздеу",
-            placeholder=(
-                "Мысалы: Ньютон заңы, жылдамдық, күш..."
-            ),
+            placeholder="Мысалы: жылдамдық, күш...",
             key="tasks_search"
         )
 
         if search_text.strip():
-
             keyword = search_text.strip().casefold()
-
             tasks = [
                 task for task in tasks
-                if keyword in str(
-                    task.get("question", "")
-                ).casefold()
+                if keyword in str(task.get("question", "")).casefold()
             ]
 
-        # 6. КҮРДЕЛІЛІК БОЙЫНША СҮЗГІ
-        difficulty_values = sorted({
-            str(task.get("difficulty"))
+        # 6. Күрделілік бойынша сүзгі
+        difficulty_labels = {
+            "easy": "Жеңіл",
+            "medium": "Орташа",
+            "hard": "Күрделі"
+        }
+
+        available_difficulties = sorted({
+            task.get("difficulty")
             for task in tasks
             if task.get("difficulty")
         })
 
-        difficulty_options = (
-            ["Барлығы"] + difficulty_values
-        )
+        difficulty_options = ["Барлығы"] + [
+            difficulty_labels.get(value, value)
+            for value in available_difficulties
+        ]
 
-        difficulty = st.selectbox(
+        selected_difficulty = st.selectbox(
             "📊 Есеп күрделілігі",
             difficulty_options,
             key="tasks_difficulty"
         )
 
-        if difficulty != "Барлығы":
+        if selected_difficulty != "Барлығы":
+            selected_code = next(
+                (
+                    code for code, label in difficulty_labels.items()
+                    if label == selected_difficulty
+                ),
+                selected_difficulty
+            )
 
             tasks = [
                 task for task in tasks
-                if str(task.get("difficulty", ""))
-                == difficulty
+                if task.get("difficulty") == selected_code
             ]
 
         st.divider()
 
-        # 7. НӘТИЖЕ
         col1, col2 = st.columns(2)
 
         with col1:
-            st.metric(
-                "Табылған есептер",
-                len(tasks)
-            )
+            st.metric("Табылған есептер", len(tasks))
 
         with col2:
-            st.metric(
-                "Сынып",
-                f"{grade}-сынып"
-            )
+            st.metric("Сынып", f"{grade}-сынып")
 
         st.divider()
 
         if not tasks:
             st.info(
-                "Есеп табылмады. Басқа бөлімді "
-                "немесе іздеу сөзін таңдап көр."
+                "Есеп табылмады. Басқа бөлімді немесе "
+                "іздеу сөзін таңдап көр."
             )
             return
 
         st.subheader("📝 Есептер тізімі")
 
-        # 8. ЕСЕПТЕРДІ КӨРСЕТУ
-        for number, task in enumerate(
-            tasks,
-            start=1
-        ):
+        # 7. Есептерді көрсету және жауапты тексеру
+        if "task_check_results" not in st.session_state:
+            st.session_state.task_check_results = {}
+
+        for number, task in enumerate(tasks, start=1):
 
             task_id = task["id"]
-
             lesson_title = lesson_titles.get(
                 task["lesson_id"],
                 "Физика сабағы"
@@ -1385,56 +1364,80 @@ def show_tasks_collection():
 
             with st.container(border=True):
 
-                st.markdown(
-                    f"### Есеп №{number}"
-                )
+                st.markdown(f"### Есеп №{number}")
+                st.caption(f"📘 Сабақ: {lesson_title}")
+                st.write(task.get("question", "Есеп шарты енгізілмеген."))
 
-                st.caption(
-                    f"📘 Сабақ: {lesson_title}"
+                difficulty_text = difficulty_labels.get(
+                    task.get("difficulty"),
+                    task.get("difficulty", "")
                 )
+                if difficulty_text:
+                    st.caption(f"Күрделілік: {difficulty_text}")
 
-                st.write(
-                    task.get(
-                        "question",
-                        "Есеп шарты енгізілмеген."
-                    )
-                )
+                with st.form(key=f"task_form_{task_id}"):
 
-                if task.get("difficulty"):
-                    st.caption(
-                        "Күрделілік: "
-                        + str(task["difficulty"])
+                    answer = st.text_input(
+                        "Жауабыңды енгіз",
+                        placeholder="Мысалы: 25 м/с",
+                        key=f"student_answer_{task_id}"
                     )
 
-                answer = st.text_input(
-                    "Жауабыңды енгіз",
-                    placeholder="Мысалы: 25 м/с",
-                    key=f"student_answer_{task_id}"
+                    submitted = st.form_submit_button(
+                        "Жауабын тексеру",
+                        use_container_width=True
+                    )
+
+                if submitted:
+
+                    if not answer.strip():
+                        st.warning("Алдымен жауабыңды енгіз.")
+                    else:
+                        try:
+                            check_result = supabase.rpc(
+                                "check_physics_task_answer",
+                                {
+                                    "p_task_id": str(task_id),
+                                    "p_answer": answer.strip()
+                                }
+                            ).execute()
+
+                            result_data = check_result.data or []
+
+                            if not result_data:
+                                st.error(
+                                    "Тексеру нәтижесі алынбады. "
+                                    "Supabase функциясын тексер."
+                                )
+                            else:
+                                st.session_state.task_check_results[
+                                    str(task_id)
+                                ] = result_data[0]
+
+                        except Exception as e:
+                            st.error("Жауапты тексеру кезінде қате шықты.")
+                            st.caption(
+                                f"{type(e).__name__}: {str(e)[:250]}"
+                            )
+
+                result = st.session_state.task_check_results.get(
+                    str(task_id)
                 )
 
-                st.button(
-                    "Жауабын тексеру",
-                    key=f"check_task_{task_id}",
-                    disabled=True,
-                    help=(
-                        "Автоматты тексеру "
-                        "келесі кезеңде қосылады."
-                    )
-                )
-
-                with st.expander("📘 Шешу жолы"):
-
-                    st.info(
-                        "Есептің шешу жолын көрсету "
-                        "функциясы келесі кезеңде қосылады."
-                    )
+                if result:
+                    if result.get("is_correct"):
+                        st.success("✅ Дұрыс жауап! Жарайсың!")
+                        if result.get("explanation"):
+                            with st.expander("📘 Шешу жолын көрсету"):
+                                st.write(result["explanation"])
+                    else:
+                        st.error(
+                            "❌ Жауап дұрыс емес. "
+                            "Қайта ойланып, тағы бір рет көр."
+                        )
 
     except Exception as e:
-
-        st.error(
-            "Есептерді жүктеу кезінде қате пайда болды."
-        )
-
+        st.error("Есептерді жүктеу кезінде қате пайда болды.")
         st.code(str(e))
 
 
