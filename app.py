@@ -1,8 +1,6 @@
 
 import streamlit as st
-import sqlite3
-import hashlib
-import secrets
+from supabase import create_client
 
 # =====================================
 # 1. БЕТ БАПТАУЛАРЫ
@@ -15,50 +13,39 @@ st.set_page_config(
 )
 
 # =====================================
-# 2. ДЕРЕКТЕР БАЗАСЫ
+# 2. SUPABASE БАЙЛАНЫСЫ
 # =====================================
 
-def connect_db():
-    return sqlite3.connect("fizika_users.db")
+@st.cache_data
+def get_config():
+    return {
+        "url": st.secrets["supabase"]["url"],
+        "key": st.secrets["supabase"]["publishable_key"]
+    }
 
 
-def create_table():
-    conn = connect_db()
+try:
+    config = get_config()
 
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            fullname TEXT NOT NULL,
-            role TEXT NOT NULL,
-            school TEXT NOT NULL,
-            detail TEXT NOT NULL,
-            username TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            salt TEXT NOT NULL
+    # Әр пайдаланушының жеке Streamlit сессиясында клиент құрылады
+    if "supabase_client" not in st.session_state:
+        st.session_state.supabase_client = create_client(
+            config["url"],
+            config["key"]
         )
-    """)
 
-    conn.commit()
-    conn.close()
+    supabase = st.session_state.supabase_client
 
-
-create_table()
-
-# =====================================
-# 3. ҚҰПИЯСӨЗДІ ҚОРҒАУ
-# =====================================
-
-def hash_password(password, salt):
-    return hashlib.pbkdf2_hmac(
-        "sha256",
-        password.encode("utf-8"),
-        bytes.fromhex(salt),
-        200000
-    ).hex()
+except Exception:
+    st.error(
+        "Supabase байланысын тексеріңіз. "
+        "Streamlit Secrets бөліміндегі мәліметтерді қараңыз."
+    )
+    st.stop()
 
 
 # =====================================
-# 4. ДИЗАЙН
+# 3. ДИЗАЙН
 # =====================================
 
 st.markdown("""
@@ -85,13 +72,12 @@ div.stButton > button:hover {
     background: #119b95;
     color: white;
 }
-
 </style>
 """, unsafe_allow_html=True)
 
 
 # =====================================
-# 5. СЕССИЯ
+# 4. СЕССИЯ
 # =====================================
 
 if "user" not in st.session_state:
@@ -99,48 +85,56 @@ if "user" not in st.session_state:
 
 
 # =====================================
-# 6. БАСТЫ ТАҚЫРЫП
+# 5. БАСТЫ ТАҚЫРЫП
 # =====================================
 
-st.markdown(
-    """
-    <h1 style="text-align:center;">
-        ⚛️ FIZIKA QADAM
-    </h1>
-    """,
-    unsafe_allow_html=True
-)
+st.markdown("""
+<h1 style="text-align:center;">
+    ⚛️ FIZIKA QADAM
+</h1>
+""", unsafe_allow_html=True)
 
-st.markdown(
-    """
-    <p style="text-align:center;">
-        Физикалық есептерді шешудің адаптивті цифрлық платформасы
-    </p>
-    """,
-    unsafe_allow_html=True
-)
+st.markdown("""
+<p style="text-align:center;">
+    Физикалық есептерді шешудің адаптивті цифрлық платформасы
+</p>
+""", unsafe_allow_html=True)
 
 st.divider()
 
 
 # =====================================
-# 7. ЖЕКЕ КАБИНЕТ
+# 6. ЖЕКЕ КАБИНЕТ
 # =====================================
 
 if st.session_state.user is not None:
 
     user = st.session_state.user
 
-    st.success(
-        f"Қош келдіңіз, {user['fullname']}!"
-    )
+    st.success(f"Қош келдіңіз, {user['fullname']}!")
 
-    if user["role"] == "Оқушы":
+    # Мұғалім болуға өтініш берілген, бірақ әлі расталмаған
+    if (
+        user["requested_role"] == "teacher"
+        and user["role"] != "teacher"
+    ):
+
+        st.title("👤 ЖЕКЕ КАБИНЕТ")
+
+        st.info(
+            "Мұғалім аккаунтына өтінішіңіз қабылданды. "
+            "Әкімші растағаннан кейін мұғалім мүмкіндіктері ашылады."
+        )
+
+        st.write(f"Мектеп: {user['school']}")
+        st.write(f"Пәні: {user['subject']}")
+
+    elif user["role"] == "student":
 
         st.title("🎓 ОҚУШЫ КАБИНЕТІ")
 
         st.write(f"Мектеп: {user['school']}")
-        st.write(f"Сыныбы: {user['detail']}")
+        st.write(f"Сыныбы: {user['grade']}-сынып")
 
         st.subheader("Менің оқу бөлімдерім")
 
@@ -161,7 +155,7 @@ if st.session_state.user is not None:
         st.title("👩‍🏫 МҰҒАЛІМ КАБИНЕТІ")
 
         st.write(f"Мектеп: {user['school']}")
-        st.write(f"Пәні: {user['detail']}")
+        st.write(f"Пәні: {user['subject']}")
 
         st.subheader("Мұғалім мүмкіндіктері")
 
@@ -173,12 +167,17 @@ if st.session_state.user is not None:
 
     if st.button("ЖҮЙЕДЕН ШЫҒУ", key="logout_button"):
 
+        try:
+            supabase.auth.sign_out()
+        except Exception:
+            pass
+
         st.session_state.user = None
         st.rerun()
 
 
 # =====================================
-# 8. ТІРКЕЛУ ЖӘНЕ ЖҮЙЕГЕ КІРУ
+# 7. ТІРКЕЛУ ЖӘНЕ КІРУ
 # =====================================
 
 else:
@@ -188,9 +187,8 @@ else:
         "📝 ТІРКЕЛУ"
     ])
 
-
     # ---------------------------------
-    # 8.1 ЖҮЙЕГЕ КІРУ
+    # 7.1 ЖҮЙЕГЕ КІРУ
     # ---------------------------------
 
     with login_tab:
@@ -199,9 +197,9 @@ else:
 
         with st.form("login_form"):
 
-            login_username = st.text_input(
-                "Логин",
-                key="login_username"
+            login_email = st.text_input(
+                "Электрондық пошта",
+                key="login_email"
             )
 
             login_password = st.text_input(
@@ -210,74 +208,59 @@ else:
                 key="login_password"
             )
 
-            login_button = st.form_submit_button(
-                "КІРУ"
-            )
+            login_button = st.form_submit_button("КІРУ")
 
         if login_button:
 
-            username = login_username.strip()
+            if not login_email.strip() or not login_password:
 
-            if not username or not login_password:
-
-                st.warning(
-                    "Логин мен құпиясөзді енгізіңіз!"
-                )
+                st.warning("Email мен құпиясөзді енгізіңіз!")
 
             else:
 
-                conn = connect_db()
+                try:
 
-                user = conn.execute(
-                    """
-                    SELECT * FROM users
-                    WHERE username = ?
-                    """,
-                    (username,)
-                ).fetchone()
+                    response = supabase.auth.sign_in_with_password({
+                        "email": login_email.strip(),
+                        "password": login_password
+                    })
 
-                conn.close()
+                    auth_user = response.user
 
-                if user is not None:
-
-                    saved_hash = user[6]
-                    salt = user[7]
-
-                    entered_hash = hash_password(
-                        login_password,
-                        salt
+                    profile_result = (
+                        supabase.table("profiles")
+                        .select("*")
+                        .eq("id", str(auth_user.id))
+                        .execute()
                     )
 
-                    if secrets.compare_digest(
-                        saved_hash,
-                        entered_hash
-                    ):
+                    if not profile_result.data:
+                        st.error("Пайдаланушы профилі табылмады.")
+                    else:
+
+                        profile = profile_result.data[0]
 
                         st.session_state.user = {
-                            "fullname": user[1],
-                            "role": user[2],
-                            "school": user[3],
-                            "detail": user[4],
-                            "username": user[5]
+                            "id": str(auth_user.id),
+                            "fullname": profile["full_name"],
+                            "role": profile["role"],
+                            "requested_role": profile["requested_role"],
+                            "school": profile["school"],
+                            "grade": profile["grade"],
+                            "subject": profile["subject"]
                         }
 
                         st.rerun()
 
-                    else:
-
-                        st.error(
-                            "Құпиясөз дұрыс емес!"
-                        )
-
-                else:
-
+                except Exception:
                     st.error(
-                        "Мұндай логин тіркелмеген!"
+                        "Кіру мүмкін болмады. "
+                        "Email-ді растағаныңызды және "
+                        "құпиясөзді дұрыс енгізгеніңізді тексеріңіз."
                     )
 
-
     # ---------------------------------
-    # 8.2 ТІРКЕЛУ
+    # 7.2 ТІРКЕЛУ
     # ---------------------------------
 
     with register_tab:
@@ -293,32 +276,27 @@ else:
 
         with st.form("register_form"):
 
-            fullname = st.text_input(
-                "Аты-жөні"
-            )
+            fullname = st.text_input("Аты-жөні")
 
-            school = st.text_input(
-                "Мектеп атауы"
-            )
+            school = st.text_input("Мектеп атауы")
 
             if register_role == "Оқушы":
 
-                detail = st.selectbox(
+                grade = st.selectbox(
                     "Сыныбы",
-                    [
-                        f"{i}-сынып"
-                        for i in range(7, 12)
-                    ]
+                    list(range(7, 12))
                 )
+
+                subject = ""
 
             else:
 
-                detail = st.text_input(
-                    "Пәні"
-                )
+                grade = None
 
-            register_username = st.text_input(
-                "Логин"
+                subject = st.text_input("Пәні")
+
+            register_email = st.text_input(
+                "Электрондық пошта"
             )
 
             register_password = st.text_input(
@@ -331,115 +309,81 @@ else:
                 type="password"
             )
 
-            register_button = st.form_submit_button(
-                "ТІРКЕЛУ"
-            )
+            register_button = st.form_submit_button("ТІРКЕЛУ")
 
         if register_button:
 
             if not fullname.strip():
-
-                st.warning(
-                    "Аты-жөніңізді енгізіңіз!"
-                )
+                st.warning("Аты-жөніңізді енгізіңіз!")
 
             elif not school.strip():
+                st.warning("Мектеп атауын енгізіңіз!")
 
-                st.warning(
-                    "Мектеп атауын енгізіңіз!"
-                )
+            elif register_role == "Мұғалім" and not subject.strip():
+                st.warning("Пәніңізді енгізіңіз!")
 
-            elif not detail.strip():
-
-                st.warning(
-                    "Пән немесе сыныпты таңдаңыз!"
-                )
-
-            elif not register_username.strip():
-
-                st.warning(
-                    "Логин енгізіңіз!"
-                )
+            elif not register_email.strip() or "@" not in register_email:
+                st.warning("Дұрыс электрондық пошта енгізіңіз!")
 
             elif len(register_password) < 8:
-
-                st.warning(
-                    "Құпиясөз кемінде 8 таңбадан тұруы керек!"
-                )
+                st.warning("Құпиясөз кемінде 8 таңбадан тұруы керек!")
 
             elif register_password != confirm_password:
-
-                st.error(
-                    "Құпиясөздер сәйкес келмейді!"
-                )
+                st.error("Құпиясөздер сәйкес келмейді!")
 
             else:
 
-                salt = secrets.token_hex(16)
-
-                password_hash = hash_password(
-                    register_password,
-                    salt
-                )
-
-                conn = connect_db()
-
                 try:
 
-                    conn.execute(
-                        """
-                        INSERT INTO users (
-                            fullname,
-                            role,
-                            school,
-                            detail,
-                            username,
-                            password_hash,
-                            salt
-                        )
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
-                        """,
-                        (
-                            fullname.strip(),
-                            register_role,
-                            school.strip(),
-                            detail.strip(),
-                            register_username.strip(),
-                            password_hash,
-                            salt
-                        )
+                    requested_role = (
+                        "student"
+                        if register_role == "Оқушы"
+                        else "teacher"
                     )
 
-                    conn.commit()
+                    response = supabase.auth.sign_up({
+                        "email": register_email.strip(),
+                        "password": register_password,
+                        "options": {
+                            "data": {
+                                "full_name": fullname.strip(),
+                                "school": school.strip(),
+                                "grade": str(grade) if grade else "",
+                                "subject": subject.strip(),
+                                "requested_role": requested_role
+                            }
+                        }
+                    })
 
-                    st.success(
-                        "Тіркелу сәтті аяқталды! "
-                        "Енді жүйеге кіре аласыз."
-                    )
+                    if response.user:
 
-                except sqlite3.IntegrityError:
+                        st.success(
+                            "Тіркелу сұранысы қабылданды! "
+                            "Электрондық поштаңызға келген "
+                            "растау сілтемесін ашыңыз. "
+                            "Содан кейін жүйеге кіре аласыз."
+                        )
 
+                    else:
+                        st.warning(
+                            "Тіркелу аяқталмады. Қайталап көріңіз."
+                        )
+
+                except Exception:
                     st.error(
-                        "Бұл логин бұрын тіркелген. "
-                        "Басқа логин таңдаңыз."
+                        "Тіркелу кезінде қате пайда болды. "
+                        "Email мекенжайын тексеріп, қайталап көріңіз."
                     )
-
-                finally:
-
-                    conn.close()
 
 
 # =====================================
-# 9. ТӨМЕНГІ БӨЛІМ
+# 8. ТӨМЕНГІ БӨЛІМ
 # =====================================
 
 st.divider()
 
-st.markdown(
-    """
-    <p style="text-align:center;">
-        FIZIKA QADAM © 2026
-    </p>
-    """,
-    unsafe_allow_html=True
-)
+st.markdown("""
+<p style="text-align:center;">
+    FIZIKA QADAM © 2026
+</p>
+""", unsafe_allow_html=True)
