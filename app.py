@@ -16,25 +16,19 @@ st.set_page_config(
 # 2. SUPABASE БАЙЛАНЫСЫ
 # =====================================
 
-@st.cache_data
-def get_config():
-    return {
-        "url": st.secrets["supabase"]["url"],
-        "publishable_key": st.secrets["supabase"]["publishable_key"]
-    }
-
-
 try:
-    config = get_config()
+    supabase_url = st.secrets["supabase"]["url"]
+    supabase_key = st.secrets["supabase"]["publishable_key"]
 
     supabase = create_client(
-        config["url"],
-        config["publishable_key"]
+        supabase_url,
+        supabase_key
     )
 
 except Exception as e:
     st.error("Supabase байланысы орнамады.")
     st.caption(f"Қате түрі: {type(e).__name__}")
+    st.write(f"Толық қате: {str(e)}")
     st.stop()
 
 
@@ -143,7 +137,7 @@ if st.session_state.user is not None:
             st.info("🧪 Виртуалды зертхана")
             st.info("📊 Менің жетістіктерім")
 
-    else:
+    elif user["role"] == "teacher":
 
         st.title("👩‍🏫 МҰҒАЛІМ КАБИНЕТІ")
 
@@ -156,9 +150,12 @@ if st.session_state.user is not None:
         st.info("📝 Тапсырмалар беру")
         st.info("📊 Оқушылардың нәтижелерін бақылау")
 
+    else:
+        st.error("Аккаунт рөлі анықталмады.")
+
     st.divider()
 
-    if st.button("ЖҮЙЕДЕН ШЫҒУ", key="logout_button"):
+    if st.button("ЖҮЙЕДЕН ШЫҒУ"):
 
         try:
             supabase.auth.sign_out()
@@ -180,9 +177,9 @@ else:
         "📝 ТІРКЕЛУ"
     ])
 
-    # ---------------------------------
+    # =================================
     # 7.1 ЖҮЙЕГЕ КІРУ
-    # ---------------------------------
+    # =================================
 
     with login_tab:
 
@@ -191,14 +188,12 @@ else:
         with st.form("login_form"):
 
             login_email = st.text_input(
-                "Электрондық пошта",
-                key="login_email"
+                "Электрондық пошта"
             )
 
             login_password = st.text_input(
                 "Құпиясөз",
-                type="password",
-                key="login_password"
+                type="password"
             )
 
             login_button = st.form_submit_button("КІРУ")
@@ -222,6 +217,7 @@ else:
 
                     if auth_user is None:
                         st.error("Пайдаланушы табылмады.")
+
                     else:
 
                         profile_result = (
@@ -251,13 +247,21 @@ else:
                             st.rerun()
 
                 except Exception as e:
-                    st.error("Кіру кезінде қате пайда болды.")
-                    st.caption(f"Қате түрі: {type(e).__name__}")
+
+                    st.error("Жүйеге кіру кезінде қате пайда болды.")
+
+                    st.caption(
+                        f"Қате түрі: {type(e).__name__}"
+                    )
+
+                    st.write(
+                        f"Толық қате: {str(e)}"
+                    )
 
 
-    # ---------------------------------
+    # =================================
     # 7.2 ТІРКЕЛУ
-    # ---------------------------------
+    # =================================
 
     with register_tab:
 
@@ -266,8 +270,7 @@ else:
         register_role = st.radio(
             "Тіркелу түрі",
             ["Оқушы", "Мұғалім"],
-            horizontal=True,
-            key="register_role"
+            horizontal=True
         )
 
         with st.form("register_form"):
@@ -310,21 +313,27 @@ else:
         if register_button:
 
             if not fullname.strip():
+
                 st.warning("Аты-жөніңізді енгізіңіз!")
 
             elif not school.strip():
+
                 st.warning("Мектеп атауын енгізіңіз!")
 
             elif register_role == "Мұғалім" and not subject.strip():
+
                 st.warning("Пәніңізді енгізіңіз!")
 
             elif not register_email.strip() or "@" not in register_email:
+
                 st.warning("Дұрыс электрондық пошта енгізіңіз!")
 
             elif len(register_password) < 8:
+
                 st.warning("Құпиясөз кемінде 8 таңбадан тұруы керек!")
 
             elif register_password != confirm_password:
+
                 st.error("Құпиясөздер сәйкес келмейді!")
 
             else:
@@ -361,13 +370,22 @@ else:
                         )
 
                     else:
+
                         st.warning(
                             "Тіркелу аяқталмады. Қайталап көріңіз."
                         )
 
                 except Exception as e:
+
                     st.error("Тіркелу кезінде қате пайда болды.")
-                    st.caption(f"Қате түрі: {type(e).__name__}")
+
+                    st.caption(
+                        f"Қате түрі: {type(e).__name__}"
+                    )
+
+                    st.write(
+                        f"Толық қате: {str(e)}"
+                    )
 
 
 # =====================================
