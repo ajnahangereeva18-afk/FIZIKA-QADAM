@@ -149,11 +149,12 @@ else:
 
             conn = connect_db()
 
-            user = conn.execute(
-                "SELECT * FROM users WHERE username = ?",
-                (username,)
-            ).fetchone()
+            username = username.strip()
 
+user = conn.execute(
+    "SELECT * FROM users WHERE username = ?",
+    (username,)
+).fetchone()
             conn.close()
 
             if user:
