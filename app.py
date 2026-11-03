@@ -610,51 +610,42 @@ QADAM_INSTRUCTIONS = """
 """
 
 
+
 def ask_qadam_ai(messages, mode, grade):
     try:
-        api_key = st.secrets["openai"]["api_key"]
-    except Exception:
-        return None, (
-            "OpenAI API кілті әлі бапталмаған. "
-            "Оны Streamlit Cloud → Settings → Secrets бөліміне "
-            "жеке енгізу қажет. Кілтті чатқа немесе GitHub-қа жазбаңыз."
-        )
+        api_key = st.secrets["groq"]["api_key"].strip()
 
-    if not api_key or not str(api_key).strip():
-        return None, (
-            "OpenAI API кілті бос. "
-            "Streamlit Secrets баптауын тексеріңіз."
-        )
-
-    mode_instruction = {
-        "Түсіндіруші": (
-            "Оқушының сұрағын тақырыпты түсіндіру ретінде қарастыр. "
-            "Қарапайым тіл мен мысал қолдан."
-        ),
-        "Есеп шығарушы": (
-            "Есептің толық шешімін ретімен көрсет: "
-            "Берілгені, ХБЖ, Формула, Шешуі, Жауабы."
-        ),
-        "Екі режим": (
-            "Алдымен ұғымды қысқаша түсіндір, содан кейін "
-            "қажет болса формуламен және қадамдық шешумен көрсет."
-        )
-    }[mode]
-
-    try:
         client = OpenAI(
-            api_key=str(api_key).strip(),
-            timeout=30.0,
+            api_key=api_key,
+            base_url="https://api.groq.com/openai/v1",
+            timeout=60.0,
             max_retries=1
         )
 
+        instructions = f"""
+        Сенің атың — QADAM AI.
+        Сен FIZIKA QADAM платформасының физика пәні бойынша
+        виртуалды көмекшісісің.
+
+        Оқушының сыныбы: {grade}.
+        Жұмыс режимі: {mode}.
+
+        Міндеттерің:
+        - Физика сұрақтарына қазақ тілінде жауап беру.
+        - Күрделі тақырыптарды қарапайым тілмен түсіндіру.
+        - Формулаларды дұрыс көрсету.
+        - Есептерді кезең-кезеңімен шығару.
+        - Оқушыны өз бетінше ойлануға ынталандыру.
+        - Қажет болса, өмірден мысал келтіру.
+        - Білмейтін ақпаратты ойдан шығармау.
+
+        Жауаптарың түсінікті, сауатты және оқушының
+        жас ерекшелігіне сай болсын.
+        """
+
         response = client.responses.create(
-            model="gpt-5.5",
-            instructions=(
-                QADAM_INSTRUCTIONS
-                + f"\nОқушы сыныбы: {grade}."
-                + f"\nЖауап режимі: {mode}. {mode_instruction}"
-            ),
+            model="openai/gpt-oss-20b",
+            instructions=instructions,
             input=[
                 {
                     "role": item["role"],
@@ -662,25 +653,18 @@ def ask_qadam_ai(messages, mode, grade):
                 }
                 for item in messages[-10:]
             ],
-            max_output_tokens=750,
-            store=False
+            max_output_tokens=750
         )
 
-        answer = (
-            response.output_text
-            or "Жауапты дайындау мүмкін болмады."
-        ).strip()
-
-        return answer, None
+        return response.output_text, None
 
     except Exception as e:
-        error_type = type(e).__name__
-        error_message = str(e)
-
         return None, (
-            f"AI қатесінің түрі: {error_type}\n\n"
-            f"Толық ақпарат: {error_message[:500]}"
+            f"QADAM AI қатесі: {type(e).__name__}. "
+            f"Қызметке қосылу мүмкін болмады. "
+            f"Қайтадан байқап көріңіз."
         )
+
 
 
 def show_floating_qadam_chat():
