@@ -20,20 +20,18 @@ st.set_page_config(
 def get_config():
     return {
         "url": st.secrets["supabase"]["url"],
-        "key": st.secrets["supabase"]["publishable_key"]
+        "publishable_key": st.secrets["supabase"]["publishable_key"]
     }
 
 
 try:
     config = get_config()
 
-    # Әр пайдаланушының жеке Streamlit сессиясында клиент құрылады
-try:
-    config = get_config()
     supabase = create_client(
         config["url"],
         config["publishable_key"]
     )
+
 except Exception as e:
     st.error("Supabase байланысы орнамады.")
     st.caption(f"Қате түрі: {type(e).__name__}")
@@ -109,7 +107,6 @@ if st.session_state.user is not None:
 
     st.success(f"Қош келдіңіз, {user['fullname']}!")
 
-    # Мұғалім болуға өтініш берілген, бірақ әлі расталмаған
     if (
         user["requested_role"] == "teacher"
         and user["role"] != "teacher"
@@ -223,37 +220,40 @@ else:
 
                     auth_user = response.user
 
-                    profile_result = (
-                        supabase.table("profiles")
-                        .select("*")
-                        .eq("id", str(auth_user.id))
-                        .execute()
-                    )
-
-                    if not profile_result.data:
-                        st.error("Пайдаланушы профилі табылмады.")
+                    if auth_user is None:
+                        st.error("Пайдаланушы табылмады.")
                     else:
 
-                        profile = profile_result.data[0]
+                        profile_result = (
+                            supabase.table("profiles")
+                            .select("*")
+                            .eq("id", str(auth_user.id))
+                            .execute()
+                        )
 
-                        st.session_state.user = {
-                            "id": str(auth_user.id),
-                            "fullname": profile["full_name"],
-                            "role": profile["role"],
-                            "requested_role": profile["requested_role"],
-                            "school": profile["school"],
-                            "grade": profile["grade"],
-                            "subject": profile["subject"]
-                        }
+                        if not profile_result.data:
+                            st.error("Пайдаланушы профилі табылмады.")
 
-                        st.rerun()
+                        else:
 
-                except Exception:
-                    st.error(
-                        "Кіру мүмкін болмады. "
-                        "Email-ді растағаныңызды және "
-                        "құпиясөзді дұрыс енгізгеніңізді тексеріңіз."
-                    )
+                            profile = profile_result.data[0]
+
+                            st.session_state.user = {
+                                "id": str(auth_user.id),
+                                "fullname": profile.get("full_name") or "",
+                                "role": profile.get("role") or "student",
+                                "requested_role": profile.get("requested_role") or "student",
+                                "school": profile.get("school") or "",
+                                "grade": profile.get("grade"),
+                                "subject": profile.get("subject") or ""
+                            }
+
+                            st.rerun()
+
+                except Exception as e:
+                    st.error("Кіру кезінде қате пайда болды.")
+                    st.caption(f"Қате түрі: {type(e).__name__}")
+
 
     # ---------------------------------
     # 7.2 ТІРКЕЛУ
@@ -365,11 +365,9 @@ else:
                             "Тіркелу аяқталмады. Қайталап көріңіз."
                         )
 
-                except Exception:
-                    st.error(
-                        "Тіркелу кезінде қате пайда болды. "
-                        "Email мекенжайын тексеріп, қайталап көріңіз."
-                    )
+                except Exception as e:
+                    st.error("Тіркелу кезінде қате пайда болды.")
+                    st.caption(f"Қате түрі: {type(e).__name__}")
 
 
 # =====================================
