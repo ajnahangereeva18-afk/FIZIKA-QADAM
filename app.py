@@ -1149,6 +1149,207 @@ def show_physics_course():
             f"Қате түрі: {type(e).__name__}: {str(e)[:250]}"
         )
 
+# =====================================================
+# 9. ЕСЕПТЕР ЖИНАҒЫ
+# =====================================================
+def show_tasks_collection():
+
+    st.title("📚 Есептер жинағы")
+    st.caption(
+        "Физикалық есептерді ізде, таңда және өз біліміңді тексер."
+    )
+
+    st.divider()
+
+    # Сынып таңдау
+    col1, col2 = st.columns(2)
+
+    with col1:
+        grade = st.selectbox(
+            "🎓 Сыныпты таңда",
+            [7, 8, 9, 10, 11],
+            key="tasks_grade"
+        )
+
+    with col2:
+        if grade in [10, 11]:
+            direction_name = st.selectbox(
+                "Оқу бағыты",
+                ["ЖМБ", "ҚГБ"],
+                key="tasks_direction"
+            )
+            track = "jmb" if direction_name == "ЖМБ" else "qgb"
+        else:
+            track = "common"
+            st.text_input(
+                "Оқу бағыты",
+                value="Жалпы курс",
+                disabled=True
+            )
+
+    # Күрделілік
+    difficulty = st.selectbox(
+        "📊 Есеп күрделілігі",
+        ["Барлығы", "Жеңіл", "Орташа", "Күрделі"],
+        key="tasks_difficulty"
+    )
+
+    st.divider()
+
+    # Курс пен бөлімдерді жүктеу
+    try:
+        course_result = (
+            supabase.table("physics_courses")
+            .select("id, grade, track, title")
+            .eq("grade", grade)
+            .eq("track", track)
+            .eq("is_published", True)
+            .limit(1)
+            .execute()
+        )
+
+        if not course_result.data:
+            st.warning("Бұл сыныпқа жарияланған курс табылмады.")
+            return
+
+        course_id = course_result.data[0]["id"]
+
+        units_result = (
+            supabase.table("physics_units")
+            .select("id, title, sort_order")
+            .eq("course_id", course_id)
+            .order("sort_order")
+            .execute()
+        )
+
+        units = units_result.data or []
+
+        unit_options = {"Барлық бөлімдер": None}
+
+        for unit in units:
+            unit_options[unit["title"]] = unit["id"]
+
+        selected_unit = st.selectbox(
+            "📖 Физика бөлімін таңда",
+            list(unit_options.keys()),
+            key="tasks_unit"
+        )
+
+        # Есептерді іздеу
+        search_text = st.text_input(
+            "🔍 Есеп іздеу",
+            placeholder=(
+                "Мысалы: Ньютон заңы, жылдамдық, күш, қысым..."
+            ),
+            key="tasks_search"
+        )
+
+        st.caption(
+            "Есептің шартындағы сөздер арқылы іздеуге болады."
+        )
+
+        # Есептерді Supabase-тен алу
+        query = (
+            supabase.table("physics_tasks")
+            .select("id, unit_id, question, difficulty")
+            .eq("is_published", True)
+        )
+
+        if unit_options[selected_unit] is not None:
+            query = query.eq(
+                "unit_id",
+                unit_options[selected_unit]
+            )
+
+        tasks_result = query.execute()
+        tasks = tasks_result.data or []
+
+        # Күрделілік бойынша сүзгі
+        if difficulty != "Барлығы":
+            tasks = [
+                task for task in tasks
+                if str(task.get("difficulty", "")).casefold()
+                == difficulty.casefold()
+            ]
+
+        # Мәтін бойынша іздеу
+        if search_text.strip():
+            keyword = search_text.strip().casefold()
+
+            tasks = [
+                task for task in tasks
+                if keyword in str(
+                    task.get("question", "")
+                ).casefold()
+            ]
+
+        st.divider()
+
+        # Нәтиже саны
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.metric("Табылған есептер", len(tasks))
+
+        with col2:
+            st.metric("Таңдалған сынып", f"{grade}-сынып")
+
+        st.divider()
+
+        if not tasks:
+            st.info(
+                "Есеп табылмады. Басқа тақырып немесе сөз енгізіп көр."
+            )
+            return
+
+        st.subheader("📝 Есептер тізімі")
+
+        # Есептерді көрсету
+        for number, task in enumerate(tasks, start=1):
+
+            task_id = task["id"]
+
+            with st.container(border=True):
+
+                st.markdown(f"### Есеп №{number}")
+
+                st.write(
+                    task.get(
+                        "question",
+                        "Есеп шарты енгізілмеген."
+                    )
+                )
+
+                if task.get("difficulty"):
+                    st.caption(
+                        f"Күрделілік деңгейі: {task['difficulty']}"
+                    )
+
+                answer = st.text_input(
+                    "Жауабыңды енгіз",
+                    placeholder="Мысалы: 25 м/с",
+                    key=f"student_answer_{task_id}"
+                )
+
+                st.button(
+                    "Жауабын тексеру",
+                    key=f"check_task_{task_id}",
+                    disabled=True,
+                    help="Автоматты тексеру келесі кезеңде қосылады."
+                )
+
+                with st.expander("📘 Шешу жолы"):
+                    st.info(
+                        "Бұл есептің шешу жолын көрсету "
+                        "функциясын келесі кезеңде қосамыз."
+                    )
+
+    except Exception as e:
+        st.error(
+            "Есептерді жүктеу кезінде қате пайда болды."
+        )
+        st.caption(f"Қате түрі: {type(e).__name__}")
+
 
 # =====================================================
 # 9. ПРОФИЛЬ ЖӘНЕ ӘЗІРЛЕНУ ҮСТІНДЕГІ БӨЛІМДЕР
@@ -1302,11 +1503,8 @@ if st.session_state.user is not None:
     elif selected_navigation == "Жалпы курс":
         show_physics_course()
 
-    elif selected_navigation == "Есептер жинағы":
-        show_placeholder(
-            "🧮 Есептер жинағы",
-            "Физикалық есептерді тақырып және күрделілік деңгейі бойынша орындаңыз."
-        )
+elif selected_navigation == "Есептер жинағы":
+    show_tasks_collection()
 
     elif selected_navigation == "Олимпиада есептері":
         show_placeholder(
