@@ -674,10 +674,12 @@ def ask_qadam_ai(messages, mode, grade):
         return answer, None
 
     except Exception as e:
+        error_type = type(e).__name__
+        error_message = str(e)
+
         return None, (
-            f"AI қызметіне қосылу кезінде қате шықты "
-            f"({type(e).__name__}). API баптауын және "
-            "интернет байланысын тексеріңіз."
+            f"AI қатесінің түрі: {error_type}\n\n"
+            f"Толық ақпарат: {error_message[:500]}"
         )
 
 
