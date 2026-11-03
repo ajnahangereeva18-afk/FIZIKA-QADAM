@@ -1149,6 +1149,7 @@ def show_physics_course():
             f"Қате түрі: {type(e).__name__}: {str(e)[:250]}"
         )
 
+
 # =====================================================
 # 9. ЕСЕПТЕР ЖИНАҒЫ
 # =====================================================
@@ -1156,12 +1157,12 @@ def show_tasks_collection():
 
     st.title("📚 Есептер жинағы")
     st.caption(
-        "Физикалық есептерді ізде, таңда және өз біліміңді тексер."
+        "Физикалық есептерді тақырып және күрделілік "
+        "деңгейі бойынша орында."
     )
 
     st.divider()
 
-    # Сынып таңдау
     col1, col2 = st.columns(2)
 
     with col1:
@@ -1173,12 +1174,19 @@ def show_tasks_collection():
 
     with col2:
         if grade in [10, 11]:
+
             direction_name = st.selectbox(
                 "Оқу бағыты",
                 ["ЖМБ", "ҚГБ"],
                 key="tasks_direction"
             )
-            track = "jmb" if direction_name == "ЖМБ" else "qgb"
+
+            track = (
+                "jmb"
+                if direction_name == "ЖМБ"
+                else "qgb"
+            )
+
         else:
             track = "common"
             st.text_input(
@@ -1187,17 +1195,11 @@ def show_tasks_collection():
                 disabled=True
             )
 
-    # Күрделілік
-    difficulty = st.selectbox(
-        "📊 Есеп күрделілігі",
-        ["Барлығы", "Жеңіл", "Орташа", "Күрделі"],
-        key="tasks_difficulty"
-    )
-
     st.divider()
 
-    # Курс пен бөлімдерді жүктеу
     try:
+
+        # 1. КУРСТЫ ЖҮКТЕУ
         course_result = (
             supabase.table("physics_courses")
             .select("id, grade, track, title")
@@ -1209,11 +1211,14 @@ def show_tasks_collection():
         )
 
         if not course_result.data:
-            st.warning("Бұл сыныпқа жарияланған курс табылмады.")
+            st.warning(
+                "Бұл сыныпқа жарияланған курс табылмады."
+            )
             return
 
         course_id = course_result.data[0]["id"]
 
+        # 2. БӨЛІМДЕРДІ ЖҮКТЕУ
         units_result = (
             supabase.table("physics_units")
             .select("id, title, sort_order")
@@ -1223,6 +1228,10 @@ def show_tasks_collection():
         )
 
         units = units_result.data or []
+
+        if not units:
+            st.info("Курс бөлімдері әлі енгізілмеген.")
+            return
 
         unit_options = {"Барлық бөлімдер": None}
 
@@ -1235,45 +1244,70 @@ def show_tasks_collection():
             key="tasks_unit"
         )
 
-        # Есептерді іздеу
+        # 3. ТАҢДАЛҒАН БӨЛІМНІҢ САБАҚТАРЫН ЖҮКТЕУ
+        if unit_options[selected_unit] is not None:
+
+            selected_unit_ids = [
+                unit_options[selected_unit]
+            ]
+
+        else:
+
+            selected_unit_ids = [
+                unit["id"] for unit in units
+            ]
+
+        lessons_result = (
+            supabase.table("physics_lessons")
+            .select("id, unit_id, title")
+            .eq("is_published", True)
+            .in_("unit_id", selected_unit_ids)
+            .execute()
+        )
+
+        lessons = lessons_result.data or []
+
+        if not lessons:
+            st.info(
+                "Бұл бөлімге жарияланған сабақтар енгізілмеген."
+            )
+            return
+
+        lesson_ids = [
+            lesson["id"] for lesson in lessons
+        ]
+
+        lesson_titles = {
+            lesson["id"]: lesson["title"]
+            for lesson in lessons
+        }
+
+        # 4. ЕСЕПТЕРДІ ЖҮКТЕУ
+        tasks_result = (
+            supabase.table("physics_tasks")
+            .select(
+                "id, lesson_id, question, difficulty, "
+                "task_type, sort_order"
+            )
+            .eq("is_published", True)
+            .in_("lesson_id", lesson_ids)
+            .order("sort_order")
+            .execute()
+        )
+
+        tasks = tasks_result.data or []
+
+        # 5. ІЗДЕУ
         search_text = st.text_input(
             "🔍 Есеп іздеу",
             placeholder=(
-                "Мысалы: Ньютон заңы, жылдамдық, күш, қысым..."
+                "Мысалы: Ньютон заңы, жылдамдық, күш..."
             ),
             key="tasks_search"
         )
 
-        st.caption(
-            "Есептің шартындағы сөздер арқылы іздеуге болады."
-        )
-
-        # Есептерді Supabase-тен алу
-        query = (
-            supabase.table("physics_tasks")
-            .select("id, unit_id, question, difficulty")
-            .eq("is_published", True)
-        )
-
-        if unit_options[selected_unit] is not None:
-            query = query.eq(
-                "unit_id",
-                unit_options[selected_unit]
-            )
-
-        tasks_result = query.execute()
-        tasks = tasks_result.data or []
-
-        # Күрделілік бойынша сүзгі
-        if difficulty != "Барлығы":
-            tasks = [
-                task for task in tasks
-                if str(task.get("difficulty", "")).casefold()
-                == difficulty.casefold()
-            ]
-
-        # Мәтін бойынша іздеу
         if search_text.strip():
+
             keyword = search_text.strip().casefold()
 
             tasks = [
@@ -1283,35 +1317,81 @@ def show_tasks_collection():
                 ).casefold()
             ]
 
+        # 6. КҮРДЕЛІЛІК БОЙЫНША СҮЗГІ
+        difficulty_values = sorted({
+            str(task.get("difficulty"))
+            for task in tasks
+            if task.get("difficulty")
+        })
+
+        difficulty_options = (
+            ["Барлығы"] + difficulty_values
+        )
+
+        difficulty = st.selectbox(
+            "📊 Есеп күрделілігі",
+            difficulty_options,
+            key="tasks_difficulty"
+        )
+
+        if difficulty != "Барлығы":
+
+            tasks = [
+                task for task in tasks
+                if str(task.get("difficulty", ""))
+                == difficulty
+            ]
+
         st.divider()
 
-        # Нәтиже саны
+        # 7. НӘТИЖЕ
         col1, col2 = st.columns(2)
 
         with col1:
-            st.metric("Табылған есептер", len(tasks))
+            st.metric(
+                "Табылған есептер",
+                len(tasks)
+            )
 
         with col2:
-            st.metric("Таңдалған сынып", f"{grade}-сынып")
+            st.metric(
+                "Сынып",
+                f"{grade}-сынып"
+            )
 
         st.divider()
 
         if not tasks:
             st.info(
-                "Есеп табылмады. Басқа тақырып немесе сөз енгізіп көр."
+                "Есеп табылмады. Басқа бөлімді "
+                "немесе іздеу сөзін таңдап көр."
             )
             return
 
         st.subheader("📝 Есептер тізімі")
 
-        # Есептерді көрсету
-        for number, task in enumerate(tasks, start=1):
+        # 8. ЕСЕПТЕРДІ КӨРСЕТУ
+        for number, task in enumerate(
+            tasks,
+            start=1
+        ):
 
             task_id = task["id"]
 
+            lesson_title = lesson_titles.get(
+                task["lesson_id"],
+                "Физика сабағы"
+            )
+
             with st.container(border=True):
 
-                st.markdown(f"### Есеп №{number}")
+                st.markdown(
+                    f"### Есеп №{number}"
+                )
+
+                st.caption(
+                    f"📘 Сабақ: {lesson_title}"
+                )
 
                 st.write(
                     task.get(
@@ -1322,7 +1402,8 @@ def show_tasks_collection():
 
                 if task.get("difficulty"):
                     st.caption(
-                        f"Күрделілік деңгейі: {task['difficulty']}"
+                        "Күрделілік: "
+                        + str(task["difficulty"])
                     )
 
                 answer = st.text_input(
@@ -1335,21 +1416,27 @@ def show_tasks_collection():
                     "Жауабын тексеру",
                     key=f"check_task_{task_id}",
                     disabled=True,
-                    help="Автоматты тексеру келесі кезеңде қосылады."
+                    help=(
+                        "Автоматты тексеру "
+                        "келесі кезеңде қосылады."
+                    )
                 )
 
                 with st.expander("📘 Шешу жолы"):
+
                     st.info(
-                        "Бұл есептің шешу жолын көрсету "
-                        "функциясын келесі кезеңде қосамыз."
+                        "Есептің шешу жолын көрсету "
+                        "функциясы келесі кезеңде қосылады."
                     )
 
- 
     except Exception as e:
+
         st.error(
             "Есептерді жүктеу кезінде қате пайда болды."
         )
+
         st.code(str(e))
+
 
 # =====================================================
 # 9. ПРОФИЛЬ ЖӘНЕ ӘЗІРЛЕНУ ҮСТІНДЕГІ БӨЛІМДЕР
