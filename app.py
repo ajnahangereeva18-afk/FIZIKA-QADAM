@@ -28,7 +28,6 @@ try:
 except Exception as e:
     st.error("Supabase байланысы орнамады.")
     st.caption(f"Қате түрі: {type(e).__name__}")
-    st.write(f"Толық қате: {str(e)}")
     st.stop()
 
 
@@ -38,12 +37,13 @@ except Exception as e:
 
 st.markdown("""
 <style>
+
 .stApp {
     background: linear-gradient(135deg, #101d36, #173c60);
     color: white;
 }
 
-h1, h2, h3, p, label {
+h1, h2, h3, h4, p, label {
     color: white !important;
 }
 
@@ -60,6 +60,12 @@ div.stButton > button:hover {
     background: #119b95;
     color: white;
 }
+
+div[data-testid="stExpander"] {
+    background: rgba(255,255,255,0.06);
+    border-radius: 12px;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -80,9 +86,7 @@ st.markdown("""
 <h1 style="text-align:center;">
     ⚛️ FIZIKA QADAM
 </h1>
-""", unsafe_allow_html=True)
 
-st.markdown("""
 <p style="text-align:center;">
     Физикалық есептерді шешудің адаптивті цифрлық платформасы
 </p>
@@ -92,14 +96,210 @@ st.divider()
 
 
 # =====================================
-# 6. ЖЕКЕ КАБИНЕТ
+# 6. ФИЗИКА КУРСЫН КӨРСЕТУ ФУНКЦИЯСЫ
+# =====================================
+
+def show_physics_course():
+
+    st.header("📚 ФИЗИКА КУРСЫ")
+
+    # Оқушының сыныбы
+    grade_options = [7, 8, 9, 10, 11]
+
+    try:
+        profile_grade = int(
+            st.session_state.user.get("grade") or 7
+        )
+    except (TypeError, ValueError):
+        profile_grade = 7
+
+    grade_index = (
+        grade_options.index(profile_grade)
+        if profile_grade in grade_options
+        else 0
+    )
+
+    selected_grade = st.selectbox(
+        "Сыныпты таңдаңыз",
+        grade_options,
+        index=grade_index,
+        key="course_grade"
+    )
+
+    # 10–11 сыныптарға бағыт таңдау
+    if selected_grade in [10, 11]:
+
+        track_choice = st.selectbox(
+            "Оқу бағытын таңдаңыз",
+            [
+                "Жаратылыстану-математикалық бағыт (ЖМБ)",
+                "Қоғамдық-гуманитарлық бағыт (ҚГБ)"
+            ],
+            key="course_track"
+        )
+
+        selected_track = (
+            "jmb"
+            if "ЖМБ" in track_choice
+            else "qgb"
+        )
+
+    else:
+        selected_track = "common"
+        st.info("Жалпы білім беретін курс")
+
+    st.divider()
+
+    # Курсты Supabase-тен алу
+    try:
+
+        course_result = (
+            supabase.table("physics_courses")
+            .select("id, grade, track, title, description")
+            .eq("grade", selected_grade)
+            .eq("track", selected_track)
+            .eq("is_published", True)
+            .limit(1)
+            .execute()
+        )
+
+        if not course_result.data:
+
+            st.warning(
+                "Бұл сыныпқа арналған курс әзірге жарияланбаған."
+            )
+            return
+
+        course = course_result.data[0]
+
+        st.subheader(f"⚛️ {course['title']}")
+
+        if course.get("description"):
+            st.write(course["description"])
+
+        # Курстың бөлімдерін алу
+        units_result = (
+            supabase.table("physics_units")
+            .select("id, title, description, sort_order")
+            .eq("course_id", course["id"])
+            .order("sort_order")
+            .execute()
+        )
+
+        units = units_result.data or []
+
+        if not units:
+            st.info("Бұл курста әзірге бөлімдер жоқ.")
+            return
+
+        st.write(f"**Курс бөлімдері: {len(units)}**")
+
+        # Әр бөлімді көрсету
+        for number, unit in enumerate(units, start=1):
+
+            with st.expander(
+                f"📂 {number}. {unit['title']}"
+            ):
+
+                if unit.get("description"):
+                    st.write(unit["description"])
+
+                # Бөлім сабақтарын алу
+                lessons_result = (
+                    supabase.table("physics_lessons")
+                    .select(
+                        "id, title, learning_objective_code, "
+                        "learning_objective, theory, formulas, "
+                        "examples, sort_order"
+                    )
+                    .eq("unit_id", unit["id"])
+                    .eq("is_published", True)
+                    .order("sort_order")
+                    .execute()
+                )
+
+                lessons = lessons_result.data or []
+
+                if not lessons:
+
+                    st.caption(
+                        "Бұл бөлімге сабақтар әлі енгізілмеген."
+                    )
+
+                else:
+
+                    for lesson_number, lesson in enumerate(
+                        lessons,
+                        start=1
+                    ):
+
+                        with st.expander(
+                            f"📘 {lesson_number}. {lesson['title']}"
+                        ):
+
+                            # Оқу мақсаты
+                            if lesson.get(
+                                "learning_objective_code"
+                            ):
+                                st.caption(
+                                    "Оқу мақсаты: "
+                                    + lesson["learning_objective_code"]
+                                )
+
+                            if lesson.get("learning_objective"):
+                                st.write(
+                                    lesson["learning_objective"]
+                                )
+
+                            # Теория
+                            if lesson.get("theory"):
+                                st.markdown("### 📖 Теория")
+                                st.write(lesson["theory"])
+
+                            # Формулалар
+                            formulas = lesson.get("formulas") or []
+
+                            if formulas:
+                                st.markdown("### 🧮 Формулалар")
+
+                                for formula in formulas:
+                                    st.write(formula)
+
+                            # Мысалдар
+                            examples = lesson.get("examples") or []
+
+                            if examples:
+                                st.markdown("### 💡 Мысалдар")
+
+                                for example in examples:
+                                    st.write(example)
+
+    except Exception as e:
+
+        st.error(
+            "Физика курсын жүктеу кезінде қате пайда болды."
+        )
+
+        st.caption(
+            f"Қате түрі: {type(e).__name__}"
+        )
+
+
+# =====================================
+# 7. ЖЕКЕ КАБИНЕТ
 # =====================================
 
 if st.session_state.user is not None:
 
     user = st.session_state.user
 
-    st.success(f"Қош келдіңіз, {user['fullname']}!")
+    st.success(
+        f"Қош келдіңіз, {user['fullname']}!"
+    )
+
+    # ---------------------------------
+    # МҰҒАЛІМ ӨТІНІШІ
+    # ---------------------------------
 
     if (
         user["requested_role"] == "teacher"
@@ -116,6 +316,10 @@ if st.session_state.user is not None:
         st.write(f"Мектеп: {user['school']}")
         st.write(f"Пәні: {user['subject']}")
 
+    # ---------------------------------
+    # ОҚУШЫ КАБИНЕТІ
+    # ---------------------------------
+
     elif user["role"] == "student":
 
         st.title("🎓 ОҚУШЫ КАБИНЕТІ")
@@ -123,19 +327,31 @@ if st.session_state.user is not None:
         st.write(f"Мектеп: {user['school']}")
         st.write(f"Сыныбы: {user['grade']}-сынып")
 
+        st.divider()
+
+        # Физика курсы
+        show_physics_course()
+
+        st.divider()
+
+        # Басқа бөлімдер
         st.subheader("Менің оқу бөлімдерім")
 
         col1, col2 = st.columns(2)
 
         with col1:
-            st.info("📚 Физика курсы")
             st.info("🧮 Есептер банкі")
             st.info("🏆 Олимпиадаға дайындық")
+            st.info("📝 Тест тапсырмалары")
 
         with col2:
             st.info("⚛️ QADAM шешімі")
             st.info("🧪 Виртуалды зертхана")
             st.info("📊 Менің жетістіктерім")
+
+    # ---------------------------------
+    # МҰҒАЛІМ КАБИНЕТІ
+    # ---------------------------------
 
     elif user["role"] == "teacher":
 
@@ -151,10 +367,12 @@ if st.session_state.user is not None:
         st.info("📊 Оқушылардың нәтижелерін бақылау")
 
     else:
+
         st.error("Аккаунт рөлі анықталмады.")
 
     st.divider()
 
+    # Жүйеден шығу
     if st.button("ЖҮЙЕДЕН ШЫҒУ"):
 
         try:
@@ -167,7 +385,7 @@ if st.session_state.user is not None:
 
 
 # =====================================
-# 7. ТІРКЕЛУ ЖӘНЕ КІРУ
+# 8. ТІРКЕЛУ ЖӘНЕ КІРУ
 # =====================================
 
 else:
@@ -178,7 +396,7 @@ else:
     ])
 
     # =================================
-    # 7.1 ЖҮЙЕГЕ КІРУ
+    # 8.1 ЖҮЙЕГЕ КІРУ
     # =================================
 
     with login_tab:
@@ -196,27 +414,39 @@ else:
                 type="password"
             )
 
-            login_button = st.form_submit_button("КІРУ")
+            login_button = st.form_submit_button(
+                "КІРУ"
+            )
 
         if login_button:
 
-            if not login_email.strip() or not login_password:
+            if (
+                not login_email.strip()
+                or not login_password
+            ):
 
-                st.warning("Email мен құпиясөзді енгізіңіз!")
+                st.warning(
+                    "Email мен құпиясөзді енгізіңіз!"
+                )
 
             else:
 
                 try:
 
-                    response = supabase.auth.sign_in_with_password({
-                        "email": login_email.strip(),
-                        "password": login_password
-                    })
+                    response = (
+                        supabase.auth.sign_in_with_password({
+                            "email": login_email.strip(),
+                            "password": login_password
+                        })
+                    )
 
                     auth_user = response.user
 
                     if auth_user is None:
-                        st.error("Пайдаланушы табылмады.")
+
+                        st.error(
+                            "Пайдаланушы табылмады."
+                        )
 
                     else:
 
@@ -228,7 +458,10 @@ else:
                         )
 
                         if not profile_result.data:
-                            st.error("Пайдаланушы профилі табылмады.")
+
+                            st.error(
+                                "Пайдаланушы профилі табылмады."
+                            )
 
                         else:
 
@@ -248,19 +481,17 @@ else:
 
                 except Exception as e:
 
-                    st.error("Жүйеге кіру кезінде қате пайда болды.")
+                    st.error(
+                        "Жүйеге кіру кезінде қате пайда болды."
+                    )
 
                     st.caption(
                         f"Қате түрі: {type(e).__name__}"
                     )
 
-                    st.write(
-                        f"Толық қате: {str(e)}"
-                    )
-
 
     # =================================
-    # 7.2 ТІРКЕЛУ
+    # 8.2 ТІРКЕЛУ
     # =================================
 
     with register_tab:
@@ -275,9 +506,13 @@ else:
 
         with st.form("register_form"):
 
-            fullname = st.text_input("Аты-жөні")
+            fullname = st.text_input(
+                "Аты-жөні"
+            )
 
-            school = st.text_input("Мектеп атауы")
+            school = st.text_input(
+                "Мектеп атауы"
+            )
 
             if register_role == "Оқушы":
 
@@ -292,7 +527,9 @@ else:
 
                 grade = None
 
-                subject = st.text_input("Пәні")
+                subject = st.text_input(
+                    "Пәні"
+                )
 
             register_email = st.text_input(
                 "Электрондық пошта"
@@ -308,33 +545,53 @@ else:
                 type="password"
             )
 
-            register_button = st.form_submit_button("ТІРКЕЛУ")
+            register_button = st.form_submit_button(
+                "ТІРКЕЛУ"
+            )
 
         if register_button:
 
             if not fullname.strip():
 
-                st.warning("Аты-жөніңізді енгізіңіз!")
+                st.warning(
+                    "Аты-жөніңізді енгізіңіз!"
+                )
 
             elif not school.strip():
 
-                st.warning("Мектеп атауын енгізіңіз!")
+                st.warning(
+                    "Мектеп атауын енгізіңіз!"
+                )
 
-            elif register_role == "Мұғалім" and not subject.strip():
+            elif (
+                register_role == "Мұғалім"
+                and not subject.strip()
+            ):
 
-                st.warning("Пәніңізді енгізіңіз!")
+                st.warning(
+                    "Пәніңізді енгізіңіз!"
+                )
 
-            elif not register_email.strip() or "@" not in register_email:
+            elif (
+                not register_email.strip()
+                or "@" not in register_email
+            ):
 
-                st.warning("Дұрыс электрондық пошта енгізіңіз!")
+                st.warning(
+                    "Дұрыс электрондық пошта енгізіңіз!"
+                )
 
             elif len(register_password) < 8:
 
-                st.warning("Құпиясөз кемінде 8 таңбадан тұруы керек!")
+                st.warning(
+                    "Құпиясөз кемінде 8 таңбадан тұруы керек!"
+                )
 
             elif register_password != confirm_password:
 
-                st.error("Құпиясөздер сәйкес келмейді!")
+                st.error(
+                    "Құпиясөздер сәйкес келмейді!"
+                )
 
             else:
 
@@ -377,19 +634,17 @@ else:
 
                 except Exception as e:
 
-                    st.error("Тіркелу кезінде қате пайда болды.")
+                    st.error(
+                        "Тіркелу кезінде қате пайда болды."
+                    )
 
                     st.caption(
                         f"Қате түрі: {type(e).__name__}"
                     )
 
-                    st.write(
-                        f"Толық қате: {str(e)}"
-                    )
-
 
 # =====================================
-# 8. ТӨМЕНГІ БӨЛІМ
+# 9. ТӨМЕНГІ БӨЛІМ
 # =====================================
 
 st.divider()
