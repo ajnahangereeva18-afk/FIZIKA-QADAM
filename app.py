@@ -2254,7 +2254,8 @@ if st.session_state.user is not None:
 
         show_physics_world()
 
-     elif selected_navigation == "QADAM ШЕШІМІ":
+    elif selected_navigation == "QADAM ШЕШІМІ":
+     
         show_qadam_solution()
 
     elif selected_navigation == "Тест тапсырмалары":
