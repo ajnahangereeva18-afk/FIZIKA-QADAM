@@ -1783,7 +1783,6 @@ def show_floating_qadam_chat():
     # =================================================
 
     else:
-
         with st.container(
             key="qadam_chat_closed"
         ):
@@ -1803,9 +1802,7 @@ def show_floating_qadam_chat():
 # =====================================================
 
 else:
-
     show_header()
-
     st.markdown("""
     <div class="main-banner">
         <div class="banner-label">
