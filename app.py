@@ -3,7 +3,8 @@ import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
 from supabase import create_client
-
+import time
+import pandas as pd
 # =====================================================
 # 1. БЕТ БАПТАУЛАРЫ
 # =====================================================
@@ -1876,7 +1877,286 @@ def show_olympiad():
         "Бұл бөлім әзірлену үстінде. "
         "Келесі кезеңдерде функционалы қосылады."
     )
+# ============================================================
+# 9-СЫНЫП. ВИРТУАЛДЫ ЗЕРТХАНА
+# НЬЮТОННЫҢ ЕКІНШІ ЗАҢЫН ЗЕРТТЕУ
+# ============================================================
 
+def show_virtual_lab_newton():
+
+    st.title("🔬 Виртуалды зертхана")
+    st.subheader("9-сынып | Ньютонның екінші заңын зерттеу")
+
+    st.markdown("""
+    **Зерттеу мақсаты:** дененің үдеуі әсер ететін қорытқы күшке
+    тура, ал дененің массасына кері пропорционал екенін зерттеу.
+    """)
+
+    st.info(
+        "Тәжірибе моделі: денеге көлденең бағытта қорытқы күш әсер етеді. "
+        "Ауа кедергісі мен басқа қосымша күштер есепке алынбайды."
+    )
+
+    st.markdown("### 1. Тәжірибе параметрлері")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        mass = st.slider(
+            "Дененің массасы (кг)",
+            min_value=1.0,
+            max_value=10.0,
+            value=2.0,
+            step=0.5
+        )
+
+    with col2:
+        force = st.slider(
+            "Қорытқы күш (Н)",
+            min_value=1.0,
+            max_value=20.0,
+            value=8.0,
+            step=1.0
+        )
+
+    acceleration = force / mass
+
+    st.markdown("### 2. Есептеу нәтижесі")
+
+    result1, result2, result3 = st.columns(3)
+
+    result1.metric("Күш", f"{force:.1f} Н")
+    result2.metric("Масса", f"{mass:.1f} кг")
+    result3.metric("Үдеу", f"{acceleration:.2f} м/с²")
+
+    st.latex(r"F = ma \\qquad a = \\frac{F}{m}")
+
+    st.markdown(
+        f"Есептеу: a = {force:.1f} / {mass:.1f} "
+        f"= **{acceleration:.2f} м/с²**"
+    )
+
+    st.divider()
+
+    # --------------------------------------------------------
+    # 3. ҚОЗҒАЛЫС АНИМАЦИЯСЫ
+    # --------------------------------------------------------
+
+    st.markdown("### 3. Дененің қозғалыс анимациясы")
+
+    st.write(
+        "«Қозғалысты бастау» батырмасын басып, күш әсерінен "
+        "дененің қалай қозғалатынын бақыла."
+    )
+
+    animation_area = st.empty()
+
+    if st.button("▶ Қозғалысты бастау", key="newton_animation"):
+
+        total_time = 2.0
+        max_position = 0.5 * acceleration * total_time ** 2
+
+        for frame in range(31):
+
+            current_time = total_time * frame / 30
+            position = 0.5 * acceleration * current_time ** 2
+
+            if max_position > 0:
+                x = 40 + (position / max_position) * 500
+            else:
+                x = 40
+
+            svg = f"""
+            <div style="background:#eef5ff;padding:15px;border-radius:12px;">
+                <svg width="100%" viewBox="0 0 600 150">
+                    <line x1="20" y1="105" x2="580" y2="105"
+                          stroke="#64748b" stroke-width="4"/>
+                    <rect x="{x}" y="65" width="55" height="40"
+                          rx="7" fill="#2563eb"/>
+                    <text x="{x + 27}" y="90" text-anchor="middle"
+                          fill="white" font-size="15">m</text>
+                    <line x1="{x + 55}" y1="83"
+                          x2="{min(x + 130, 570)}" y2="83"
+                          stroke="#dc2626" stroke-width="4"/>
+                    <polygon points="{min(x + 130, 570)},83
+                                     {min(x + 117, 557)},76
+                                     {min(x + 117, 557)},90"
+                             fill="#dc2626"/>
+                    <text x="20" y="25" fill="#1e293b"
+                          font-size="15">F = {force:.1f} Н</text>
+                    <text x="20" y="48" fill="#1e293b"
+                          font-size="13">t = {current_time:.2f} с</text>
+                </svg>
+                <p style="color:#1e293b;">
+                    Уақыт: {current_time:.2f} с |
+                    Орын ауыстыру: {position:.2f} м
+                </p>
+            </div>
+            """
+
+            animation_area.markdown(
+                svg,
+                unsafe_allow_html=True
+            )
+
+            time.sleep(0.05)
+
+    st.divider()
+
+    # --------------------------------------------------------
+    # 4. ӨЛШЕУ КЕСТЕСІ
+    # --------------------------------------------------------
+
+    st.markdown("### 4. Өлшеу нәтижелері")
+
+    st.write(
+        "Масса тұрақты болғанда күшті өзгертіп, үдеудің "
+        "қалай өзгеретінін салыстыр."
+    )
+
+    force_values = list(range(1, 21))
+
+    experiment_data = []
+
+    for f in force_values:
+        a = f / mass
+
+        experiment_data.append({
+            "Күш (Н)": f,
+            "Масса (кг)": mass,
+            "Үдеу (м/с²)": round(a, 2)
+        })
+
+    experiment_df = pd.DataFrame(experiment_data)
+
+    st.dataframe(
+        experiment_df,
+        use_container_width=True,
+        hide_index=True
+    )
+
+    # --------------------------------------------------------
+    # 5. ГРАФИК
+    # --------------------------------------------------------
+
+    st.markdown("### 5. Күш пен үдеу арасындағы график")
+
+    chart_df = experiment_df.set_index("Күш (Н)")
+
+    st.line_chart(
+        chart_df["Үдеу (м/с²)"],
+        y_label="Үдеу (м/с²)",
+        x_label="Күш (Н)"
+    )
+
+    st.caption(
+        "Графикте масса тұрақты болғанда күш артқан сайын "
+        "үдеудің де артатыны көрсетілген."
+    )
+
+    st.divider()
+
+    # --------------------------------------------------------
+    # 6. ЖЕКЕ ӨЛШЕУ НӘТИЖЕСІН САҚТАУ
+    # --------------------------------------------------------
+
+    st.markdown("### 6. Өз тәжірибеңнің нәтижесін тірке")
+
+    if "newton_measurements" not in st.session_state:
+        st.session_state["newton_measurements"] = []
+
+    if st.button(
+        "➕ Нәтижені тәжірибе журналына қосу",
+        key="save_newton_result"
+    ):
+
+        st.session_state["newton_measurements"].append({
+            "Масса (кг)": mass,
+            "Күш (Н)": force,
+            "Үдеу (м/с²)": round(acceleration, 2)
+        })
+
+        st.success("Нәтиже тәжірибе журналына қосылды!")
+
+    if st.session_state["newton_measurements"]:
+
+        journal_df = pd.DataFrame(
+            st.session_state["newton_measurements"]
+        )
+
+        st.dataframe(
+            journal_df,
+            use_container_width=True,
+            hide_index=True
+        )
+
+        csv_data = journal_df.to_csv(
+            index=False
+        ).encode("utf-8-sig")
+
+        st.download_button(
+            "📥 Тәжірибе журналын жүктеу",
+            data=csv_data,
+            file_name="newton_laboratory.csv",
+            mime="text/csv"
+        )
+
+        if st.button(
+            "Журналды тазарту",
+            key="clear_newton_journal"
+        ):
+            st.session_state["newton_measurements"] = []
+            st.rerun()
+
+    st.divider()
+
+    # --------------------------------------------------------
+    # 7. ҚОРЫТЫНДЫ
+    # --------------------------------------------------------
+
+    st.markdown("### 7. Зерттеу қорытындысы")
+
+    st.markdown("""
+    **Төмендегі сұрақтарға жауап бер:**
+
+    1. Күш артқан кезде үдеу қалай өзгереді?
+    2. Масса артқан кезде үдеу қалай өзгереді?
+    3. Үдеу мен қорытқы күш арасында қандай байланыс бар?
+    4. Тәжірибе нәтижесі Ньютонның екінші заңын растай ма?
+    """)
+
+    conclusion = st.text_area(
+        "Өз қорытындыңды жаз:",
+        placeholder="Тәжірибе барысында мен ... байқадым. "
+                    "Қорытындылай келе ...",
+        height=130,
+        key="newton_conclusion"
+    )
+
+    if st.button(
+        "Қорытындыны тексеруге жіберу",
+        key="check_newton_conclusion"
+    ):
+
+        if len(conclusion.strip()) < 15:
+            st.warning(
+                "Қорытындыны толығырақ жаз."
+            )
+        else:
+            st.success(
+                "Қорытындың енгізілді! "
+                "Мұғаліммен бірге тәжірибе нәтижесін талда."
+            )
+
+    st.divider()
+
+    st.markdown("### 📌 Зертханалық жұмыстың негізгі тұжырымы")
+
+    st.success("""
+    Дененің үдеуі қорытқы күшке тура пропорционал,
+    ал дененің массасына кері пропорционал.
+    Бұл — Ньютонның екінші заңы.
+    """)
 
 # =====================================================
 # 13. НЕГІЗГІ БЕТТЕР ЖӘНЕ SIDEBAR
@@ -1968,12 +2248,9 @@ if st.session_state.user is not None:
 
         show_olympiad()
 
-    elif selected_navigation == "Виртуалды зертхана":
+   elif selected_navigation == "Виртуалды зертхана":
 
-        show_placeholder(
-            "🧪 Виртуалды зертхана",
-            "Физикалық тәжірибелер мен құбылыстардың интерактивті модельдері."
-        )
+    show_virtual_lab_newton()
 
         show_physics_world()
 
