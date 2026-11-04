@@ -1966,7 +1966,7 @@ if st.session_state.user is not None:
 
     elif selected_navigation == "Олимпиада есептері":
 
-    show_olympiad()
+        show_olympiad()
 
     elif selected_navigation == "Виртуалды зертхана":
 
