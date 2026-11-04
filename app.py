@@ -2254,12 +2254,8 @@ if st.session_state.user is not None:
 
         show_physics_world()
 
-    elif selected_navigation == "QADAM шешімі":
-
-        show_placeholder(
-            "🧠 QADAM шешімі",
-            "Есептің берілгенін, формуласын және шешу жолын кезең-кезеңімен талдаңыз."
-        )
+     elif selected_navigation == "QADAM ШЕШІМІ":
+        show_qadam_solution()
 
     elif selected_navigation == "Тест тапсырмалары":
 
@@ -2282,7 +2278,169 @@ if st.session_state.user is not None:
     show_footer()
 
     show_floating_qadam_chat()
+# ============================================================
+# QADAM ШЕШІМІ — ФИЗИКА ЕСЕПТЕРІН ШЫҒАРУ
+# ============================================================
 
+def show_qadam_solution():
+
+    st.title("🧠 QADAM ШЕШІМІ")
+
+    st.subheader("Физика есептерін 6 қадаммен шығару")
+
+    st.markdown("""
+    Есепті енгізіп, төмендегі алты қадамды орында.
+    Әр қадам есепті дұрыс әрі жүйелі шығаруға көмектеседі.
+    """)
+
+    st.divider()
+
+    # 1. ЕСЕПТІ ЕНГІЗУ
+    st.markdown("### 📝 Есеп шарты")
+
+    task = st.text_area(
+        "Физикалық есептің шартын енгіз:",
+        placeholder="Мысалы: Массасы 2 кг денеге 10 Н күш әсер етеді. Дененің үдеуін анықта.",
+        height=120,
+        key="qadam_task"
+    )
+
+    st.divider()
+
+    # 1-ҚАДАМ
+    with st.expander("1-қадам. 🔍 ТАЛДАУ", expanded=True):
+
+        st.write(
+            "Есептің мазмұнын түсін. Қандай физикалық құбылыс "
+            "немесе заң қарастырылғанын анықта."
+        )
+
+        analysis = st.text_area(
+            "Есепке талдау жаз:",
+            placeholder="Бұл есепте дененің қозғалысы және оған әсер ететін күш қарастырылады.",
+            key="qadam_analysis"
+        )
+
+    # 2-ҚАДАМ
+    with st.expander("2-қадам. 📋 БЕРІЛГЕНІ"):
+
+        st.write("Есепте берілген шамаларды енгіз.")
+
+        given = st.text_area(
+            "Берілген шамалар:",
+            placeholder="m = 2 кг\nF = 10 Н",
+            key="qadam_given"
+        )
+
+        unknown = st.text_input(
+            "Табу керек:",
+            placeholder="a - ?",
+            key="qadam_unknown"
+        )
+
+    # 3-ҚАДАМ
+    with st.expander("3-қадам. 📐 SI ЖҮЙЕСІ"):
+
+        st.write(
+            "Барлық физикалық шамаларды халықаралық бірліктер жүйесіне келтір."
+        )
+
+        si = st.text_area(
+            "SI жүйесіне келтіру:",
+            placeholder="Мысалы: m = 2 кг, F = 10 Н. Барлық шамалар SI жүйесінде берілген.",
+            key="qadam_si"
+        )
+
+    # 4-ҚАДАМ
+    with st.expander("4-қадам. ⚖️ ЗАҢДЫ ТАҢДАУ"):
+
+        law = st.selectbox(
+            "Физикалық заңды таңда:",
+            [
+                "Ньютонның бірінші заңы",
+                "Ньютонның екінші заңы",
+                "Ньютонның үшінші заңы",
+                "Импульстің сақталу заңы",
+                "Энергияның сақталу заңы",
+                "Ом заңы",
+                "Архимед заңы",
+                "Басқа заң"
+            ],
+            key="qadam_law"
+        )
+
+        formula = st.text_input(
+            "Формула:",
+            placeholder="Мысалы: F = ma",
+            key="qadam_formula"
+        )
+
+    # 5-ҚАДАМ
+    with st.expander("5-қадам. 🧮 ЕСЕПТЕУ"):
+
+        calculation = st.text_area(
+            "Есептеу жолын жаз:",
+            placeholder="a = F / m\n a = 10 / 2 = 5 м/с²",
+            key="qadam_calculation"
+        )
+
+    # 6-ҚАДАМ
+    with st.expander("6-қадам. ✅ ТЕКСЕРУ"):
+
+        answer = st.text_input(
+            "Соңғы жауап:",
+            placeholder="a = 5 м/с²",
+            key="qadam_answer"
+        )
+
+        check = st.text_area(
+            "Жауапты тексеру және қорытынды:",
+            placeholder="Жауаптың өлшем бірлігі дұрыс. Ньютонның екінші заңы қолданылды.",
+            key="qadam_check"
+        )
+
+    st.divider()
+
+    # НӘТИЖЕНІ КӨРСЕТУ
+    if st.button(
+        "📊 ШЕШІМДІ ҚОРЫТЫНДЫЛАУ",
+        use_container_width=True,
+        key="qadam_finish"
+    ):
+
+        if not task.strip():
+            st.warning("Алдымен есептің шартын енгіз.")
+        elif not analysis.strip() or not given.strip():
+            st.warning("Алғашқы екі қадамды толтыр.")
+        elif not si.strip() or not formula.strip():
+            st.warning("SI жүйесі мен формуланы толтыр.")
+        elif not calculation.strip() or not answer.strip():
+            st.warning("Есептеу мен соңғы жауапты енгіз.")
+        else:
+
+            st.success("Есептің шешімі рәсімделді!")
+
+            st.markdown("### 📘 Сенің шешімің")
+
+            st.write("**Есеп шарты:**", task)
+            st.write("**1. Талдау:**", analysis)
+            st.write("**2. Берілгені:**", given)
+            st.write("**Табу керек:**", unknown)
+            st.write("**3. SI жүйесі:**", si)
+            st.write("**4. Таңдалған заң:**", law)
+            st.write("**Формула:**", formula)
+            st.write("**5. Есептеу:**", calculation)
+            st.write("**6. Жауап:**", answer)
+            st.write("**Тексеру:**", check)
+
+            st.balloons()
+
+    st.divider()
+
+    st.info(
+        "QADAM ШЕШІМІ — есепті жаттап шығаруға емес, "
+        "физикалық заңдылықтарды түсініп шығаруға үйретеді."
+    )
 
 # =====================================================
 # 14. ЖҮЙЕГЕ КІРУ ЖӘНЕ ТІРКЕЛУ
