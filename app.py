@@ -611,192 +611,83 @@ QADAM_INSTRUCTIONS = """
 
 
 
+
 def ask_qadam_ai(messages, mode, grade):
     try:
-        api_key = st.secrets["groq"]["api_key"].strip()
+        from google import genai
+        from google.genai import types
 
-        client = OpenAI(
-            api_key=api_key,
-            base_url="https://api.groq.com/openai/v1",
-            timeout=60.0,
-            max_retries=1
-        )
+        api_key = st.secrets["gemini"]["api_key"].strip()
+
+        client = genai.Client(api_key=api_key)
 
         instructions = f"""
         Сенің атың — QADAM AI.
         Сен FIZIKA QADAM платформасының физика пәні бойынша
         виртуалды көмекшісісің.
 
-        Оқушының сыныбы: {grade}.
-        Жұмыс режимі: {mode}.
+        Оқушының сыныбы: {grade}
+        Жұмыс режимі: {mode}
 
         Міндеттерің:
         - Физика сұрақтарына қазақ тілінде жауап беру.
         - Күрделі тақырыптарды қарапайым тілмен түсіндіру.
         - Формулаларды дұрыс көрсету.
         - Есептерді кезең-кезеңімен шығару.
+        - Берілгені, табу керек, формула, шешуі және жауабын көрсету.
         - Оқушыны өз бетінше ойлануға ынталандыру.
         - Қажет болса, өмірден мысал келтіру.
         - Білмейтін ақпаратты ойдан шығармау.
-
-        Жауаптарың түсінікті, сауатты және оқушының
-        жас ерекшелігіне сай болсын.
+        - Жауаптарың оқушының жас ерекшелігіне сай болсын.
         """
 
-        response = client.responses.create(
-            model="openai/gpt-oss-20b",
-            instructions=instructions,
-            input=[
-                {
-                    "role": item["role"],
-                    "content": item["content"]
-                }
-                for item in messages[-10:]
-            ],
-            max_output_tokens=750
+        history = []
+
+        for item in messages[:-1]:
+            role = item.get("role", "user")
+            content = item.get("content", "")
+
+            if role == "assistant":
+                role = "model"
+            elif role != "user":
+                continue
+
+            history.append(
+                types.Content(
+                    role=role,
+                    parts=[types.Part(text=str(content))]
+                )
+            )
+
+        chat = client.chats.create(
+            model="gemini-2.5-flash",
+            history=history,
+            config=types.GenerateContentConfig(
+                system_instruction=instructions,
+                max_output_tokens=750,
+                temperature=0.7
+            )
         )
 
-        return response.output_text, None
+        last_message = messages[-1]["content"]
+
+        response = chat.send_message(
+            message=str(last_message)
+        )
+
+        answer = response.text
+
+        if not answer:
+            return None, "Gemini жауап бере алмады. Қайталап көріңіз."
+
+        return answer, None
 
     except Exception as e:
         return None, (
             f"QADAM AI қатесі: {type(e).__name__}. "
-            f"Қызметке қосылу мүмкін болмады. "
-            f"Қайтадан байқап көріңіз."
+            "Gemini қызметіне қосылу мүмкін болмады. "
+            "API кілтін және интернет байланысын тексеріңіз."
         )
-
-
-
-def show_floating_qadam_chat():
-    """Жүйеге кірген пайдаланушыға көрсетілетін қалқымалы чат."""
-
-    if st.session_state.user is None:
-        return
-
-    if st.session_state.qadam_chat_open:
-
-        with st.container(key="qadam_chat_open"):
-
-            header_col, close_col = st.columns([5, 1])
-
-            with header_col:
-                st.markdown("**⚛️ QADAM AI**")
-                st.caption("Физика бойынша жеке көмекші")
-
-            with close_col:
-                if st.button(
-                    "✕",
-                    key="qadam_close",
-                    help="Чатты жабу"
-                ):
-                    st.session_state.qadam_chat_open = False
-                    st.rerun()
-
-            mode = st.selectbox(
-                "Жауап беру режимі",
-                [
-                    "Екі режим",
-                    "Түсіндіруші",
-                    "Есеп шығарушы"
-                ],
-                key="qadam_mode"
-            )
-
-            with st.container(height=265, border=True):
-                for message in st.session_state.qadam_messages[-8:]:
-                    with st.chat_message(message["role"]):
-                        st.markdown(message["content"])
-
-            try:
-                grade = (
-                    st.session_state.user.get("grade")
-                    or "көрсетілмеген"
-                )
-            except Exception:
-                grade = "көрсетілмеген"
-
-            with st.form(
-                "qadam_chat_form",
-                clear_on_submit=True
-            ):
-                question = st.text_input(
-                    "Сұрағыңды жаз",
-                    placeholder=(
-                        "Мысалы: Ньютонның екінші заңы деген не?"
-                    ),
-                    max_chars=1200
-                )
-
-                send = st.form_submit_button(
-                    "Жіберу",
-                    use_container_width=True
-                )
-
-            clear_col, note_col = st.columns([1, 2])
-
-            with clear_col:
-                if st.button(
-                    "Тазарту",
-                    key="qadam_clear"
-                ):
-                    st.session_state.qadam_messages = [{
-                        "role": "assistant",
-                        "content": (
-                            "Чат тазартылды. "
-                            "Физикадан жаңа сұрағыңды жаза бер!"
-                        )
-                    }]
-                    st.rerun()
-
-            with note_col:
-                st.caption("Жеке деректерді жазбаңыз.")
-
-            if send:
-
-                if not question.strip():
-                    st.warning("Алдымен сұрағыңызды жазыңыз.")
-
-                elif sum(
-                    1 for m in st.session_state.qadam_messages
-                    if m["role"] == "user"
-                ) >= 20:
-                    st.warning(
-                        "Бұл сессиядағы сұрақ шегіне жеттіңіз. "
-                        "Чатты тазалап, жалғастыруға болады."
-                    )
-
-                else:
-                    st.session_state.qadam_messages.append({
-                        "role": "user",
-                        "content": question.strip()
-                    })
-
-                    answer, error = ask_qadam_ai(
-                        st.session_state.qadam_messages,
-                        mode,
-                        grade
-                    )
-
-                    if error:
-                        st.error(error)
-                    else:
-                        st.session_state.qadam_messages.append({
-                            "role": "assistant",
-                            "content": answer
-                        })
-                        st.rerun()
-
-    else:
-        with st.container(key="qadam_chat_closed"):
-
-            if st.button(
-                "💬",
-                key="qadam_open",
-                help="QADAM AI чатын ашу"
-            ):
-                st.session_state.qadam_chat_open = True
-                st.rerun()
-
 
 # =====================================================
 # 7. БАСТЫ БЕТ
