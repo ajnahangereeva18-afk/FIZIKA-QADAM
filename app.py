@@ -2250,7 +2250,7 @@ if st.session_state.user is not None:
 
    elif selected_navigation == "Виртуалды зертхана":
 
-    show_virtual_lab_newton()
+        show_virtual_lab_newton()
 
         show_physics_world()
 
