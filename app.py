@@ -1512,7 +1512,334 @@ def show_profile():
 # =====================================================
 
 def show_placeholder(title, description):
+# ============================================================
+# QADAM OLYMPIAD — ОЛИМПИАДА БӨЛІМІ
+# ============================================================
 
+def show_olympiad():
+
+    st.title("🏆 QADAM OLYMPIAD")
+
+    st.write(
+        "Физика олимпиадасына дайындал. "
+        "Есептерді шығар, шешу жолдарын үйрен."
+    )
+
+    st.markdown("---")
+
+    # ---------------- ФИЛЬТРЛЕР ----------------
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        grade = st.selectbox(
+            "Сыныпты таңда:",
+            [7, 8, 9, 10, 11],
+            key="olympiad_grade"
+        )
+
+    with col2:
+        olympiad_name = st.selectbox(
+            "Олимпиада түрі:",
+            [
+                "Барлығы",
+                "Республикалық олимпиада",
+                "Ауыл мектептері олимпиадасы",
+                "Президенттік олимпиада",
+                "Жасөспірімдер олимпиадасы"
+            ],
+            key="olympiad_type"
+        )
+
+    stage = st.selectbox(
+        "Кезеңді таңда:",
+        [
+            "Барлығы",
+            "Мектепішілік",
+            "Аудандық",
+            "Облыстық",
+            "Республикалық",
+            "Іріктеу кезеңі"
+        ],
+        key="olympiad_stage"
+    )
+
+    try:
+
+        # ---------------- SUPABASE СҰРАНЫСЫ ----------------
+
+        query = (
+            supabase.table("olympiad_tasks")
+            .select("*")
+            .eq("school_grade", grade)
+            .eq("is_published", True)
+        )
+
+        if olympiad_name != "Барлығы":
+            query = query.eq(
+                "olympiad_name",
+                olympiad_name
+            )
+
+        if stage != "Барлығы":
+            query = query.eq("stage", stage)
+
+        tasks = (
+            query
+            .order("order_number")
+            .execute()
+            .data
+        )
+
+        if not tasks:
+
+            st.info(
+                f"{grade}-сыныпқа әзірге жарияланған "
+                "тапсырмалар жоқ."
+            )
+
+            st.markdown("### Ресми олимпиада материалдары")
+
+            st.markdown(
+                "[7–8 сынып республикалық олимпиадасы — Daryn.kz]"
+                "(https://daryn.kz/kk/resp-junior-olimpiad-kz/)"
+            )
+
+            st.markdown(
+                "[9–11 сынып республикалық олимпиадасы — Daryn.kz]"
+                "(https://daryn.kz/kk/respa-kz/)"
+            )
+
+            st.markdown(
+                "[Президенттік олимпиада — Daryn.kz]"
+                "(https://daryn.kz/kk/po-kz/)"
+            )
+
+            return
+
+        # ---------------- ТАПСЫРМА ТАҢДАУ ----------------
+
+        st.success(
+            f"Табылған тапсырмалар саны: {len(tasks)}"
+        )
+
+        task_titles = [
+            f"{index + 1}. {task['task_title']}"
+            for index, task in enumerate(tasks)
+        ]
+
+        selected_title = st.selectbox(
+            "Тапсырманы таңда:",
+            task_titles,
+            key="olympiad_selected_task"
+        )
+
+        selected_index = task_titles.index(selected_title)
+
+        task = tasks[selected_index]
+
+        st.markdown("---")
+
+        # ---------------- ТАПСЫРМА АҚПАРАТЫ ----------------
+
+        st.subheader(task["task_title"])
+
+        info1, info2, info3 = st.columns(3)
+
+        info1.metric(
+            "Сынып",
+            f"{task['school_grade']}-сынып"
+        )
+
+        info2.metric(
+            "Күрделілігі",
+            task.get("difficulty") or "Орташа"
+        )
+
+        info3.metric(
+            "Кезең",
+            task.get("stage") or "Көрсетілмеген"
+        )
+
+        if task.get("olympiad_name"):
+            st.caption(
+                f"🏆 {task['olympiad_name']}"
+            )
+
+        if task.get("academic_year"):
+            st.caption(
+                f"Оқу жылы: {task['academic_year']}"
+            )
+
+        if task.get("topic"):
+            st.caption(
+                f"Тақырып: {task['topic']}"
+            )
+
+        st.markdown("### 📘 Есеп шарты")
+
+        st.markdown(task["task_text"])
+
+        # ---------------- ЕСЕП СУРЕТІ ----------------
+
+        if task.get("image_url"):
+
+            st.markdown("### 🖼 Есептің суреті")
+
+            st.image(
+                task["image_url"],
+                use_container_width=True
+            )
+
+        # ---------------- ОҚУШЫНЫҢ ЖАУАБЫ ----------------
+
+        st.markdown("---")
+
+        st.markdown("### ✍️ Өзің шығарып көр")
+
+        student_answer = st.text_input(
+            "Жауабыңды енгіз:",
+            key=f"olympiad_answer_{task['id']}"
+        )
+
+        if st.button(
+            "Жауапты тексеру",
+            key=f"olympiad_check_{task['id']}"
+        ):
+
+            correct_answer = str(
+                task.get("answer") or ""
+            ).strip().lower().replace(" ", "")
+
+            given_answer = (
+                student_answer
+                .strip()
+                .lower()
+                .replace(" ", "")
+            )
+
+            if not given_answer:
+
+                st.warning("Алдымен жауабыңды енгіз.")
+
+            elif not correct_answer:
+
+                st.info(
+                    "Бұл тапсырманың жауабы әзірге енгізілмеген."
+                )
+
+            elif given_answer == correct_answer:
+
+                st.success(
+                    "🎉 Дұрыс! Есепті жақсы шығардың!"
+                )
+
+            else:
+
+                st.error(
+                    "Жауап сәйкес келмеді. "
+                    "Шешу жолын қарап, қайта орында."
+                )
+
+        # ---------------- ҚАДАМДЫҚ ШЕШІМ ----------------
+
+        st.markdown("---")
+
+        with st.expander(
+            "📖 Есептің толық шығарылу жолын көру"
+        ):
+
+            steps = task.get("solution_steps") or []
+
+            if isinstance(steps, str):
+                try:
+                    import json
+                    steps = json.loads(steps)
+                except Exception:
+                    steps = []
+
+            if steps:
+
+                for index, step in enumerate(steps):
+
+                    if isinstance(step, dict):
+
+                        step_title = step.get(
+                            "title",
+                            f"{index + 1}-қадам"
+                        )
+
+                        step_text = step.get(
+                            "text",
+                            ""
+                        )
+
+                    else:
+
+                        step_title = f"{index + 1}-қадам"
+                        step_text = str(step)
+
+                    st.markdown(
+                        f"**{step_title}**"
+                    )
+
+                    st.markdown(step_text)
+
+            else:
+
+                st.info(
+                    "Қадамдық түсіндіру әзірге енгізілмеген."
+                )
+
+            if task.get("explanation"):
+
+                st.markdown("### Түсіндірме")
+
+                st.markdown(task["explanation"])
+
+            if task.get("answer"):
+
+                st.success(
+                    f"Қорытынды жауап: {task['answer']}"
+                )
+
+        # ---------------- ВИДЕО ЖӘНЕ АНИМАЦИЯ ----------------
+
+        if task.get("video_url"):
+
+            st.markdown("---")
+
+            st.markdown(
+                "### 🎬 Видео және анимациялық түсіндіру"
+            )
+
+            st.video(task["video_url"])
+
+        # ---------------- РЕСМИ ДЕРЕККӨЗ ----------------
+
+        st.markdown("---")
+
+        st.markdown("### 🔗 Ресми дереккөз")
+
+        if task.get("source_task_url"):
+
+            st.markdown(
+                f"[Daryn.kz тапсырмасын ашу]"
+                f"({task['source_task_url']})"
+            )
+
+        if task.get("source_solution_url"):
+
+            st.markdown(
+                f"[Ресми шешімді ашу]"
+                f"({task['source_solution_url']})"
+            )
+
+    except Exception as e:
+
+        st.error(
+            f"Олимпиада бөлімін ашу кезінде қате: {e}"
+        )
     st.title(title)
 
     st.markdown(f"""
