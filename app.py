@@ -2,7 +2,6 @@ import html
 import streamlit as st
 import numpy as np
 import plotly.graph_objects as go
-from openai import OpenAI
 from supabase import create_client
 
 # =====================================================
@@ -22,9 +21,11 @@ if "supabase_client" not in st.session_state:
     try:
         supabase_url = st.secrets["supabase"]["url"]
         supabase_key = st.secrets["supabase"]["publishable_key"]
+
         st.session_state.supabase_client = create_client(
             supabase_url, supabase_key
         )
+
     except Exception as e:
         st.error(
             "Supabase байланысы орнамады. "
@@ -332,43 +333,35 @@ def atom_figure():
             y = 1.35*np.cos(t)
             z = 1.35*np.sin(t)
 
-        fig.add_trace(
-            go.Scatter3d(
-                x=x, y=y, z=z,
-                mode="lines",
-                line=dict(color="#55A6E8", width=5)
-            )
-        )
+        fig.add_trace(go.Scatter3d(
+            x=x, y=y, z=z,
+            mode="lines",
+            line=dict(color="#55A6E8", width=5)
+        ))
 
-    fig.add_trace(
-        go.Scatter3d(
-            x=[0], y=[0], z=[0],
-            mode="markers",
-            marker=dict(
-                size=22,
-                color="#FF9F43",
-                line=dict(color="#D96B27", width=2)
-            )
+    fig.add_trace(go.Scatter3d(
+        x=[0], y=[0], z=[0],
+        mode="markers",
+        marker=dict(
+            size=22,
+            color="#FF9F43",
+            line=dict(color="#D96B27", width=2)
         )
-    )
+    ))
 
-    fig.add_trace(
-        go.Scatter3d(
-            x=[1.35, -0.75, 0],
-            y=[0, 0.95, -1.35],
-            z=[0.25, 0.75, 0.0],
-            mode="markers",
-            marker=dict(
-                size=9,
-                color=["#1769AA", "#7B61FF", "#19A7A0"],
-                line=dict(color="white", width=1)
-            )
+    fig.add_trace(go.Scatter3d(
+        x=[1.35, -0.75, 0],
+        y=[0, 0.95, -1.35],
+        z=[0.25, 0.75, 0.0],
+        mode="markers",
+        marker=dict(
+            size=9,
+            color=["#1769AA", "#7B61FF", "#19A7A0"],
+            line=dict(color="white", width=1)
         )
-    )
+    ))
 
-    return style_3d_figure(
-        fig, "АТОМ ҚҰРЫЛЫСЫ • 3D модель"
-    )
+    return style_3d_figure(fig, "АТОМ ҚҰРЫЛЫСЫ • 3D модель")
 
 
 def magnetic_figure():
@@ -380,28 +373,21 @@ def magnetic_figure():
         y = 0.72*radius*np.sin(t)
         z = 0.42*np.sin(2*t) * (1.5-radius/2)
 
-        fig.add_trace(
-            go.Scatter3d(
-                x=x, y=y, z=z,
-                mode="lines",
-                line=dict(color="#287BC1", width=5)
-            )
-        )
+        fig.add_trace(go.Scatter3d(
+            x=x, y=y, z=z,
+            mode="lines",
+            line=dict(color="#287BC1", width=5)
+        ))
 
-    fig.add_trace(
-        go.Scatter3d(
-            x=[-1.6, 1.6],
-            y=[0, 0],
-            z=[0, 0],
-            mode="markers+text",
-            text=["N", "S"],
-            textposition="top center",
-            marker=dict(
-                size=13,
-                color=["#E65C5C", "#287BC1"]
-            )
-        )
-    )
+    fig.add_trace(go.Scatter3d(
+        x=[-1.6, 1.6],
+        y=[0, 0],
+        z=[0, 0],
+        mode="markers+text",
+        text=["N", "S"],
+        textposition="top center",
+        marker=dict(size=13, color=["#E65C5C", "#287BC1"])
+    ))
 
     return style_3d_figure(
         fig, "МАГНИТ ӨРІСІ • күш сызықтарының көрінісі"
@@ -423,47 +409,39 @@ def pendulum_figure(angle_degrees):
         100
     )
 
-    fig.add_trace(
-        go.Scatter3d(
-            x=length*np.sin(arc),
-            y=0*arc,
-            z=-length*np.cos(arc),
-            mode="lines",
-            line=dict(color="#9AB8D6", width=4, dash="dot")
-        )
-    )
+    fig.add_trace(go.Scatter3d(
+        x=length*np.sin(arc),
+        y=0*arc,
+        z=-length*np.cos(arc),
+        mode="lines",
+        line=dict(color="#9AB8D6", width=4, dash="dot")
+    ))
 
-    fig.add_trace(
-        go.Scatter3d(
-            x=[0, bob_x],
-            y=[0, 0],
-            z=[0, bob_z],
-            mode="lines",
-            line=dict(color="#1769AA", width=7)
-        )
-    )
+    fig.add_trace(go.Scatter3d(
+        x=[0, bob_x],
+        y=[0, 0],
+        z=[0, bob_z],
+        mode="lines",
+        line=dict(color="#1769AA", width=7)
+    ))
 
-    fig.add_trace(
-        go.Scatter3d(
-            x=[0], y=[0], z=[0],
-            mode="markers",
-            marker=dict(size=8, color="#17365D")
-        )
-    )
+    fig.add_trace(go.Scatter3d(
+        x=[0], y=[0], z=[0],
+        mode="markers",
+        marker=dict(size=8, color="#17365D")
+    ))
 
-    fig.add_trace(
-        go.Scatter3d(
-            x=[bob_x],
-            y=[0],
-            z=[bob_z],
-            mode="markers",
-            marker=dict(
-                size=19,
-                color="#FF9F43",
-                line=dict(color="#D96B27", width=2)
-            )
+    fig.add_trace(go.Scatter3d(
+        x=[bob_x],
+        y=[0],
+        z=[bob_z],
+        mode="markers",
+        marker=dict(
+            size=19,
+            color="#FF9F43",
+            line=dict(color="#D96B27", width=2)
         )
-    )
+    ))
 
     return style_3d_figure(
         fig,
@@ -478,27 +456,23 @@ def prism_figure():
     y = [-0.7, -0.7, 0.7, -0.7, -0.7, 0.7]
     z = [-0.6, -0.6, -0.6, 0.6, 0.6, 0.6]
 
-    fig.add_trace(
-        go.Mesh3d(
-            x=x, y=y, z=z,
-            i=[0, 0, 0, 3, 3, 1, 1, 2],
-            j=[1, 2, 3, 4, 5, 4, 2, 5],
-            k=[2, 3, 1, 5, 4, 2, 5, 4],
-            color="#77B8E8",
-            opacity=0.48,
-            flatshading=True
-        )
-    )
+    fig.add_trace(go.Mesh3d(
+        x=x, y=y, z=z,
+        i=[0, 0, 0, 3, 3, 1, 1, 2],
+        j=[1, 2, 3, 4, 5, 4, 2, 5],
+        k=[2, 3, 1, 5, 4, 2, 5, 4],
+        color="#77B8E8",
+        opacity=0.48,
+        flatshading=True
+    ))
 
-    fig.add_trace(
-        go.Scatter3d(
-            x=[-1.3, 0.05],
-            y=[0, 0],
-            z=[0, 0],
-            mode="lines",
-            line=dict(color="#F2B705", width=8)
-        )
-    )
+    fig.add_trace(go.Scatter3d(
+        x=[-1.3, 0.05],
+        y=[0, 0],
+        z=[0, 0],
+        mode="lines",
+        line=dict(color="#F2B705", width=8)
+    ))
 
     colors = [
         "#E53935", "#FB8C00", "#FDD835",
@@ -508,15 +482,13 @@ def prism_figure():
     for i, color in enumerate(colors):
         yy = -0.48 + i*0.19
 
-        fig.add_trace(
-            go.Scatter3d(
-                x=[1.1, 2.0],
-                y=[0.05, yy],
-                z=[0.0, 0.12*(i-2.5)],
-                mode="lines",
-                line=dict(color=color, width=6)
-            )
-        )
+        fig.add_trace(go.Scatter3d(
+            x=[1.1, 2.0],
+            y=[0.05, yy],
+            z=[0.0, 0.12*(i-2.5)],
+            mode="lines",
+            line=dict(color=color, width=6)
+        ))
 
     return style_3d_figure(
         fig, "ЖАРЫҚТЫҢ ДИСПЕРСИЯСЫ • призма"
@@ -595,24 +567,32 @@ def show_physics_world():
             "дисперсия құбылысының көрнекі моделі."
         )
         # =====================================================
-# 6. QADAM AI — OPENAI RESPONSES API
+# 6. QADAM AI — GEMINI API
 # =====================================================
+
 QADAM_INSTRUCTIONS = """
 Сен FIZIKA QADAM платформасының қазақ тілінде сөйлейтін физика пәні көмекшісісің.
-Негізгі аудитория: 7–11 сынып оқушылары. Тек физикаға қатысты сұрақтарға жауап бер.
-Түсіндіруші режимде ұғымды қарапайым тілмен, күнделікті өмірден қауіпсіз мысалмен түсіндір.
-Есеп шығарушы режимде: Берілгені, ХБЖ-ға келтіру, Формула, Шешуі, Жауабы ретімен көрсет.
-Формуладағы әр шаманы түсіндір, өлшем бірліктерін жаз, есептеуді тексер.
-Егер есептің шарты толық болмаса, жетіспейтін мәліметті сұра; ойдан сан қоспа.
-Сенімді болмасаң, оны ашық айт. Оқушыны өз бетімен ойлануға жетелейтін бір қысқа тексеру сұрағын қос.
-Жеке деректерді сұрама және қажет етпе. Қауіпті тәжірибелерді орындауға нұсқаулық берме.
-Физикадан тыс сұрақ келсе, сыпайы түрде физика тақырыбына қайта бағытта.
+Негізгі аудитория: 7–11 сынып оқушылары.
+
+Міндеттерің:
+- Физика сұрақтарына қазақ тілінде жауап беру.
+- Күрделі тақырыптарды қарапайым тілмен түсіндіру.
+- Формулаларды дұрыс көрсету.
+- Есептерді кезең-кезеңімен шығару.
+- Берілгені, ХБЖ-ға келтіру, формула, шешуі және жауабын көрсету.
+- Формуладағы әр шаманы түсіндіру.
+- Өлшем бірліктерін дұрыс жазу.
+- Оқушыны өз бетінше ойлануға ынталандыру.
+- Қауіпсіз өмірлік мысалдар келтіру.
+- Білмейтін ақпаратты ойдан шығармау.
+- Жеке деректерді сұрамау.
+- Қауіпті тәжірибелерге нұсқаулық бермеу.
+- Физикадан тыс сұрақтарды физика тақырыбына бағыттау.
 """
 
 
-
-
 def ask_qadam_ai(messages, mode, grade):
+
     try:
         from google import genai
         from google.genai import types
@@ -622,28 +602,18 @@ def ask_qadam_ai(messages, mode, grade):
         client = genai.Client(api_key=api_key)
 
         instructions = f"""
-        Сенің атың — QADAM AI.
-        Сен FIZIKA QADAM платформасының физика пәні бойынша
-        виртуалды көмекшісісің.
+        {QADAM_INSTRUCTIONS}
 
         Оқушының сыныбы: {grade}
         Жұмыс режимі: {mode}
 
-        Міндеттерің:
-        - Физика сұрақтарына қазақ тілінде жауап беру.
-        - Күрделі тақырыптарды қарапайым тілмен түсіндіру.
-        - Формулаларды дұрыс көрсету.
-        - Есептерді кезең-кезеңімен шығару.
-        - Берілгені, табу керек, формула, шешуі және жауабын көрсету.
-        - Оқушыны өз бетінше ойлануға ынталандыру.
-        - Қажет болса, өмірден мысал келтіру.
-        - Білмейтін ақпаратты ойдан шығармау.
-        - Жауаптарың оқушының жас ерекшелігіне сай болсын.
+        Оқушының жас ерекшелігіне сай жауап бер.
         """
 
         history = []
 
         for item in messages[:-1]:
+
             role = item.get("role", "user")
             content = item.get("content", "")
 
@@ -683,15 +653,130 @@ def ask_qadam_ai(messages, mode, grade):
         return answer, None
 
     except Exception as e:
+
         return None, (
             f"QADAM AI қатесі: {type(e).__name__}. "
             "Gemini қызметіне қосылу мүмкін болмады. "
             "API кілтін және интернет байланысын тексеріңіз."
         )
 
+
 # =====================================================
-# 7. БАСТЫ БЕТ
+# 7. QADAM AI — ҚАЛҚЫМАЛЫ ЧАТ
 # =====================================================
+
+def show_floating_qadam_chat():
+
+    user = st.session_state.user or {}
+
+    if not st.session_state.qadam_chat_open:
+
+        with st.container(key="qadam_chat_closed"):
+
+            if st.button(
+                "🤖",
+                key="open_qadam_chat",
+                help="QADAM AI көмекшісін ашу"
+            ):
+                st.session_state.qadam_chat_open = True
+                st.rerun()
+
+        return
+
+    with st.container(key="qadam_chat_open"):
+
+        col1, col2 = st.columns([5, 1])
+
+        with col1:
+            st.markdown("### 🤖 QADAM AI")
+            st.caption("Физика бойынша виртуалды көмекші")
+
+        with col2:
+            if st.button("✕", key="close_qadam_chat"):
+                st.session_state.qadam_chat_open = False
+                st.rerun()
+
+        st.divider()
+
+        grade = user.get("grade") or 7
+
+        mode = st.selectbox(
+            "Жұмыс режимі",
+            ["Тақырыпты түсіндіру", "Есеп шығару"],
+            key="qadam_ai_mode"
+        )
+
+        for message in st.session_state.qadam_messages:
+
+            role = message.get("role", "user")
+            content = message.get("content", "")
+
+            with st.chat_message(
+                "assistant" if role == "assistant" else "user"
+            ):
+                st.markdown(content)
+
+        st.divider()
+
+        with st.form(
+            "qadam_chat_form",
+            clear_on_submit=True
+        ):
+
+            user_message = st.text_area(
+                "Сұрағыңды жаз",
+                placeholder="Мысалы: Ньютонның бірінші заңын түсіндір...",
+                height=80,
+                key="qadam_message_input"
+            )
+
+            send_message = st.form_submit_button(
+                "Жіберу ➤",
+                use_container_width=True
+            )
+
+        if send_message:
+
+            if not user_message.strip():
+
+                st.warning("Алдымен сұрағыңды жаз.")
+
+            else:
+
+                st.session_state.qadam_messages.append({
+                    "role": "user",
+                    "content": user_message.strip()
+                })
+
+                with st.spinner("QADAM AI жауап дайындауда..."):
+
+                    answer, error = ask_qadam_ai(
+                        st.session_state.qadam_messages,
+                        mode,
+                        grade
+                    )
+
+                if error:
+
+                    st.session_state.qadam_messages.append({
+                        "role": "assistant",
+                        "content": error
+                    })
+
+                else:
+
+                    st.session_state.qadam_messages.append({
+                        "role": "assistant",
+                        "content": answer
+                    })
+
+                st.rerun()
+
+
+# =====================================================
+# 8. БАСТЫ БЕТ
+# =====================================================
+
 def show_dashboard():
 
     user = st.session_state.user
@@ -715,6 +800,7 @@ def show_dashboard():
     """, unsafe_allow_html=True)
 
     show_physics_world()
+
     st.divider()
 
     if user["role"] == "student":
@@ -754,6 +840,7 @@ def show_dashboard():
             st.write("Жеке оқу")
 
         st.divider()
+
         st.subheader("📚 Оқу мүмкіндіктері")
 
         cards = [
@@ -795,7 +882,7 @@ def show_dashboard():
 
             for col, card in zip(
                 cols,
-                cards[start:start+3]
+                cards[start:start + 3]
             ):
 
                 title, description, target = card
@@ -838,9 +925,12 @@ def show_dashboard():
             "Оқушыларды басқару, тапсырма беру және оқу нәтижелерін "
             "бақылау бөлімдері кезең-кезеңімен қосылады."
         )
-        # =====================================================
-# 8. ЖАЛПЫ ФИЗИКА КУРСЫ
+
+
 # =====================================================
+# 9. ЖАЛПЫ ФИЗИКА КУРСЫ
+# =====================================================
+
 def show_physics_course():
 
     st.title("📚 Жалпы курс")
@@ -888,6 +978,7 @@ def show_physics_course():
         )
 
     else:
+
         selected_track = "common"
         st.info("Жалпы білім беретін курс")
 
@@ -985,16 +1076,12 @@ def show_physics_course():
                         if lesson.get("learning_objective_code"):
                             st.caption(
                                 "Оқу мақсаты: "
-                                + str(
-                                    lesson["learning_objective_code"]
-                                )
+                                + str(lesson["learning_objective_code"])
                             )
 
                         if lesson.get("learning_objective"):
                             st.markdown("#### 🎯 Оқу мақсаты")
-                            st.write(
-                                lesson["learning_objective"]
-                            )
+                            st.write(lesson["learning_objective"])
 
                         if lesson.get("theory"):
                             st.markdown("#### 📖 Теория")
@@ -1028,11 +1115,13 @@ def show_physics_course():
 
 
 # =====================================================
-# 9. ЕСЕПТЕР ЖИНАҒЫ
+# 10. ЕСЕПТЕР ЖИНАҒЫ
 # =====================================================
+
 def show_tasks_collection():
 
     st.title("📚 Есептер жинағы")
+
     st.caption(
         "Физикалық есептерді тақырып және күрделілік "
         "деңгейі бойынша орында."
@@ -1050,15 +1139,21 @@ def show_tasks_collection():
         )
 
     with col2:
+
         if grade in [10, 11]:
+
             direction_name = st.selectbox(
                 "Оқу бағыты",
                 ["ЖМБ", "ҚГБ"],
                 key="tasks_direction"
             )
+
             track = "jmb" if direction_name == "ЖМБ" else "qgb"
+
         else:
+
             track = "common"
+
             st.text_input(
                 "Оқу бағыты",
                 value="Жалпы курс",
@@ -1068,7 +1163,7 @@ def show_tasks_collection():
     st.divider()
 
     try:
-        # 1. Курсты жүктеу
+
         course_result = (
             supabase.table("physics_courses")
             .select("id")
@@ -1085,7 +1180,6 @@ def show_tasks_collection():
 
         course_id = course_result.data[0]["id"]
 
-        # 2. Бөлімдерді жүктеу
         units_result = (
             supabase.table("physics_units")
             .select("id, title, sort_order")
@@ -1114,9 +1208,10 @@ def show_tasks_collection():
         if unit_options[selected_unit] is not None:
             selected_unit_ids = [unit_options[selected_unit]]
         else:
-            selected_unit_ids = [unit["id"] for unit in units]
+            selected_unit_ids = [
+                unit["id"] for unit in units
+            ]
 
-        # 3. Сабақтарды жүктеу
         lessons_result = (
             supabase.table("physics_lessons")
             .select("id, unit_id, title")
@@ -1131,15 +1226,15 @@ def show_tasks_collection():
             st.info("Бұл бөлімде жарияланған сабақтар жоқ.")
             return
 
-        lesson_ids = [lesson["id"] for lesson in lessons]
+        lesson_ids = [
+            lesson["id"] for lesson in lessons
+        ]
 
         lesson_titles = {
             lesson["id"]: lesson["title"]
             for lesson in lessons
         }
 
-        # 4. Есептерді жүктеу
-        # correct_answer және explanation әдейі сұралмайды
         tasks_result = (
             supabase.table("physics_tasks")
             .select(
@@ -1154,7 +1249,6 @@ def show_tasks_collection():
 
         tasks = tasks_result.data or []
 
-        # 5. Іздеу
         search_text = st.text_input(
             "🔍 Есеп іздеу",
             placeholder="Мысалы: жылдамдық, күш...",
@@ -1162,13 +1256,16 @@ def show_tasks_collection():
         )
 
         if search_text.strip():
+
             keyword = search_text.strip().casefold()
+
             tasks = [
                 task for task in tasks
-                if keyword in str(task.get("question", "")).casefold()
+                if keyword in str(
+                    task.get("question", "")
+                ).casefold()
             ]
 
-        # 6. Күрделілік бойынша сүзгі
         difficulty_labels = {
             "easy": "Жеңіл",
             "medium": "Орташа",
@@ -1193,6 +1290,7 @@ def show_tasks_collection():
         )
 
         if selected_difficulty != "Барлығы":
+
             selected_code = next(
                 (
                     code for code, label in difficulty_labels.items()
@@ -1227,13 +1325,13 @@ def show_tasks_collection():
 
         st.subheader("📝 Есептер тізімі")
 
-        # 7. Есептерді көрсету және жауапты тексеру
         if "task_check_results" not in st.session_state:
             st.session_state.task_check_results = {}
 
         for number, task in enumerate(tasks, start=1):
 
             task_id = task["id"]
+
             lesson_title = lesson_titles.get(
                 task["lesson_id"],
                 "Физика сабағы"
@@ -1243,14 +1341,23 @@ def show_tasks_collection():
 
                 st.markdown(f"### Есеп №{number}")
                 st.caption(f"📘 Сабақ: {lesson_title}")
-                st.write(task.get("question", "Есеп шарты енгізілмеген."))
+
+                st.write(
+                    task.get(
+                        "question",
+                        "Есеп шарты енгізілмеген."
+                    )
+                )
 
                 difficulty_text = difficulty_labels.get(
                     task.get("difficulty"),
                     task.get("difficulty", "")
                 )
+
                 if difficulty_text:
-                    st.caption(f"Күрделілік: {difficulty_text}")
+                    st.caption(
+                        f"Күрделілік: {difficulty_text}"
+                    )
 
                 with st.form(key=f"task_form_{task_id}"):
 
@@ -1268,9 +1375,15 @@ def show_tasks_collection():
                 if submitted:
 
                     if not answer.strip():
-                        st.warning("Алдымен жауабыңды енгіз.")
+
+                        st.warning(
+                            "Алдымен жауабыңды енгіз."
+                        )
+
                     else:
+
                         try:
+
                             check_result = supabase.rpc(
                                 "check_physics_task_answer",
                                 {
@@ -1282,17 +1395,24 @@ def show_tasks_collection():
                             result_data = check_result.data or []
 
                             if not result_data:
+
                                 st.error(
                                     "Тексеру нәтижесі алынбады. "
                                     "Supabase функциясын тексер."
                                 )
+
                             else:
+
                                 st.session_state.task_check_results[
                                     str(task_id)
                                 ] = result_data[0]
 
                         except Exception as e:
-                            st.error("Жауапты тексеру кезінде қате шықты.")
+
+                            st.error(
+                                "Жауапты тексеру кезінде қате шықты."
+                            )
+
                             st.caption(
                                 f"{type(e).__name__}: {str(e)[:250]}"
                             )
@@ -1302,25 +1422,40 @@ def show_tasks_collection():
                 )
 
                 if result:
+
                     if result.get("is_correct"):
-                        st.success("✅ Дұрыс жауап! Жарайсың!")
+
+                        st.success(
+                            "✅ Дұрыс жауап! Жарайсың!"
+                        )
+
                         if result.get("explanation"):
-                            with st.expander("📘 Шешу жолын көрсету"):
+
+                            with st.expander(
+                                "📘 Шешу жолын көрсету"
+                            ):
                                 st.write(result["explanation"])
+
                     else:
+
                         st.error(
                             "❌ Жауап дұрыс емес. "
                             "Қайта ойланып, тағы бір рет көр."
                         )
 
     except Exception as e:
-        st.error("Есептерді жүктеу кезінде қате пайда болды.")
+
+        st.error(
+            "Есептерді жүктеу кезінде қате пайда болды."
+        )
+
         st.code(str(e))
 
 
 # =====================================================
-# 9. ПРОФИЛЬ ЖӘНЕ ӘЗІРЛЕНУ ҮСТІНДЕГІ БӨЛІМДЕР
+# 11. ПРОФИЛЬ
 # =====================================================
+
 def show_profile():
 
     user = st.session_state.user
@@ -1351,11 +1486,13 @@ def show_profile():
     )
 
     if user["role"] == "student":
+
         st.write(
             f"**Сыныбы:** {user.get('grade') or 'Көрсетілмеген'}"
         )
 
     if user["role"] == "teacher":
+
         st.write(
             f"**Пәні:** {user.get('subject') or ''}"
         )
@@ -1364,10 +1501,15 @@ def show_profile():
         user.get("requested_role") == "teacher"
         and user.get("role") != "teacher"
     ):
+
         st.warning(
             "Мұғалім аккаунты әкімші растауын күтуде."
         )
 
+
+# =====================================================
+# 12. ӘЗІРЛЕНУ ҮСТІНДЕГІ БӨЛІМДЕР
+# =====================================================
 
 def show_placeholder(title, description):
 
@@ -1392,8 +1534,9 @@ def show_placeholder(title, description):
 
 
 # =====================================================
-# 10. НЕГІЗГІ БЕТТЕР ЖӘНЕ SIDEBAR
+# 13. НЕГІЗГІ БЕТТЕР ЖӘНЕ SIDEBAR
 # =====================================================
+
 if st.session_state.user is not None:
 
     user = st.session_state.user
@@ -1464,58 +1607,68 @@ if st.session_state.user is not None:
 
     selected_navigation = st.session_state.selected_page
 
-    
     if selected_navigation == "Басты бет":
+
         show_dashboard()
 
     elif selected_navigation == "Жалпы курс":
+
         show_physics_course()
 
     elif selected_navigation == "Есептер жинағы":
+
         show_tasks_collection()
 
     elif selected_navigation == "Олимпиада есептері":
+
         show_placeholder(
             "🏅 Олимпиада есептері",
             "Олимпиадалық деңгейдегі физика есептерін талдаңыз."
         )
 
     elif selected_navigation == "Виртуалды зертхана":
+
         show_placeholder(
             "🧪 Виртуалды зертхана",
             "Физикалық тәжірибелер мен құбылыстардың интерактивті модельдері."
         )
+
         show_physics_world()
 
     elif selected_navigation == "QADAM шешімі":
+
         show_placeholder(
             "🧠 QADAM шешімі",
             "Есептің берілгенін, формуласын және шешу жолын кезең-кезеңімен талдаңыз."
         )
 
     elif selected_navigation == "Тест тапсырмалары":
+
         show_placeholder(
             "📝 Тест тапсырмалары",
             "Білім деңгейіңізді тақырыптық тест арқылы тексеріңіз."
         )
 
     elif selected_navigation == "Менің жетістіктерім":
+
         show_placeholder(
             "🏆 Менің жетістіктерім",
             "Оқу барысындағы жетістіктеріңізді бақылаңыз."
         )
 
     elif selected_navigation == "Менің профилім":
+
         show_profile()
 
-
     show_footer()
+
     show_floating_qadam_chat()
 
 
 # =====================================================
-# 11. ЖҮЙЕГЕ КІРУ ЖӘНЕ ТІРКЕЛУ
+# 14. ЖҮЙЕГЕ КІРУ ЖӘНЕ ТІРКЕЛУ
 # =====================================================
+
 else:
 
     show_header()
@@ -1536,6 +1689,7 @@ else:
     """, unsafe_allow_html=True)
 
     show_physics_world()
+
     st.divider()
 
     login_tab, register_tab = st.tabs([
@@ -1546,6 +1700,7 @@ else:
     # -----------------------------
     # ЖҮЙЕГЕ КІРУ
     # -----------------------------
+
     with login_tab:
 
         st.subheader("Жеке кабинетке кіру")
@@ -1572,6 +1727,7 @@ else:
                 not login_email.strip()
                 or not login_password
             ):
+
                 st.warning(
                     "Email мен құпиясөзді енгізіңіз."
                 )
@@ -1588,6 +1744,7 @@ else:
                     auth_user = response.user
 
                     if auth_user is None:
+
                         st.error("Пайдаланушы табылмады.")
 
                     else:
@@ -1649,6 +1806,7 @@ else:
     # -----------------------------
     # ТІРКЕЛУ
     # -----------------------------
+
     with register_tab:
 
         st.subheader("Жаңа аккаунт ашу")
@@ -1702,31 +1860,37 @@ else:
         if register_button:
 
             if not fullname.strip():
+
                 st.warning("Аты-жөніңізді енгізіңіз.")
 
             elif not school.strip():
+
                 st.warning("Мектеп атауын енгізіңіз.")
 
             elif (
                 register_role == "Мұғалім"
                 and not subject.strip()
             ):
+
                 st.warning("Пәніңізді енгізіңіз.")
 
             elif (
                 not register_email.strip()
                 or "@" not in register_email
             ):
+
                 st.warning(
                     "Дұрыс электрондық пошта енгізіңіз."
                 )
 
             elif len(register_password) < 8:
+
                 st.warning(
                     "Құпиясөз кемінде 8 таңбадан тұруы керек."
                 )
 
             elif register_password != confirm_password:
+
                 st.error(
                     "Құпиясөздер сәйкес келмейді."
                 )
