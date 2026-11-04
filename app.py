@@ -566,28 +566,38 @@ def show_physics_world():
             "Ақ жарықтың түрлі түстерге жіктелуі — "
             "дисперсия құбылысының көрнекі моделі."
         )
-        # =====================================================
-# 6. QADAM AI — GEMINI API
+# =====================================================
+# 6. QADAM AI — GEMINI ЖАСАНДЫ ИНТЕЛЛЕКТІ
 # =====================================================
 
 QADAM_INSTRUCTIONS = """
-Сен FIZIKA QADAM платформасының қазақ тілінде сөйлейтін физика пәні көмекшісісің.
-Негізгі аудитория: 7–11 сынып оқушылары.
+Сен QADAM AI атты қазақ тілінде сөйлейтін
+физика пәнінің жеке көмекшісісің.
 
-Міндеттерің:
-- Физика сұрақтарына қазақ тілінде жауап беру.
-- Күрделі тақырыптарды қарапайым тілмен түсіндіру.
-- Формулаларды дұрыс көрсету.
-- Есептерді кезең-кезеңімен шығару.
-- Берілгені, ХБЖ-ға келтіру, формула, шешуі және жауабын көрсету.
-- Формуладағы әр шаманы түсіндіру.
-- Өлшем бірліктерін дұрыс жазу.
-- Оқушыны өз бетінше ойлануға ынталандыру.
-- Қауіпсіз өмірлік мысалдар келтіру.
-- Білмейтін ақпаратты ойдан шығармау.
-- Жеке деректерді сұрамау.
-- Қауіпті тәжірибелерге нұсқаулық бермеу.
-- Физикадан тыс сұрақтарды физика тақырыбына бағыттау.
+НЕГІЗГІ МІНДЕТТЕРІҢ:
+1. Физика тақырыптарын түсінікті тілмен түсіндіру.
+2. Есептерді кезең-кезеңімен шығару.
+3. Формулалардың мағынасын түсіндіру.
+4. Өлшем бірліктерін ХБЖ жүйесінде көрсету.
+5. Күнделікті өмірден мысалдар келтіру.
+6. Оқушының білім деңгейіне сай жауап беру.
+7. Оқушыны өздігінен ойлануға және есеп шығаруға үйрету.
+
+ЕСЕП ШЫҒАРУ ТӘРТІБІ:
+1. Берілгені
+2. ХБЖ
+3. Формула
+4. Шешуі
+5. Жауабы
+
+ЖАУАП БЕРУ ЕРЕЖЕЛЕРІ:
+- Негізгі тіл — қазақ тілі.
+- Жауап нақты әрі түсінікті болсын.
+- Формулаларды дұрыс жаз.
+- Қажет болса, мысал келтір.
+- Оқушыға дөрекі сөйлеме.
+- Белгісіз ақпаратты ойдан шығарма.
+- Қауіпті тәжірибелерге нұсқаулық берме.
 """
 
 
@@ -597,106 +607,39 @@ def ask_qadam_ai(messages, mode, grade):
         from google import genai
         from google.genai import types
 
-        api_key = st.secrets["gemini"]["api_key"].strip()
+        # 1. Хабарламаларды тексеру
+        if not messages:
+            return None, "Алдымен сұрақ енгізіңіз."
 
-        client = genai.Client(api_key=api_key)
-
-        instructions = f"""
-        {QADAM_INSTRUCTIONS}
-
-        Оқушының сыныбы: {grade}
-        Жұмыс режимі: {mode}
-
-        Оқушының жас ерекшелігіне сай жауап бер.
-        """
-
-        history = []
-
-        for item in messages[:-1]:
-
-            role = item.get("role", "user")
-            content = item.get("content", "")
-
-            if role == "assistant":
-                role = "model"
-            elif role != "user":
-                continue
-
-            history.append(
-                types.Content(
-                    role=role,
-                    parts=[types.Part(text=str(content))]
-                )
-            )
-
-        chat = client.chats.create(
-            model="gemini-2.5-flash",
-            history=history,
-            config=types.GenerateContentConfig(
-                system_instruction=instructions,
-                max_output_tokens=750,
-                temperature=0.7
-            )
-        )
-
-        last_message = messages[-1]["content"]
-
-        response = chat.send_message(
-            message=str(last_message)
-        )
-
-        answer = response.text
-
-        if not answer:
-            return None, "Gemini жауап бере алмады. Қайталап көріңіз."
-
-        return answer, None
-
-    except Exception as e:
-
-        return None, (
-            f"QADAM AI қатесі: {type(e).__name__}. "
-            "Gemini қызметіне қосылу мүмкін болмады. "
-            "API кілтін және интернет байланысын тексеріңіз."
-        )
-
-
-# =====================================================
-# 7. QADAM AI — ҚАЛҚЫМАЛЫ ЧАТ
-# =====================================================
-
-def ask_qadam_ai(messages, mode, grade):
-
-    try:
-        from google import genai
-        from google.genai import types
-
-        # 1. API кілтін алу
+        # 2. API кілтін алу
         try:
             api_key = st.secrets["gemini"]["api_key"].strip()
+
         except Exception:
             return None, (
                 "Gemini API кілті табылмады. "
-                "Streamlit Cloud → Settings → Secrets бөлімін тексер."
+                "Streamlit Cloud → Settings → Secrets "
+                "бөлімін тексеріңіз."
             )
 
         if not api_key:
             return None, "Gemini API кілті бос тұр."
 
-        # 2. Gemini клиентін іске қосу
+        # 3. Gemini клиентін іске қосу
         client = genai.Client(api_key=api_key)
 
+        # 4. Жүйелік нұсқаулық
         instructions = f"""
-        {QADAM_INSTRUCTIONS}
+{QADAM_INSTRUCTIONS}
 
-        Оқушының сыныбы: {grade}
-        Жұмыс режимі: {mode}
+Оқушының сыныбы: {grade}
+Жұмыс режимі: {mode}
 
-        Оқушының жас ерекшелігіне сай жауап бер.
-        Қазақ тілінде түсінікті жауап жаз.
-        """
+Оқушының жас ерекшелігіне сай жауап бер.
+Қазақ тілінде түсінікті жауап жаз.
+"""
 
-        # 3. Бұрынғы хабарламалар тарихын дайындау
+        # 5. Хабарламалар тарихын дайындау
         history = []
 
         for item in messages[:-1]:
@@ -704,8 +647,12 @@ def ask_qadam_ai(messages, mode, grade):
             role = item.get("role", "user")
             content = item.get("content", "")
 
+            if not content:
+                continue
+
             if role == "assistant":
                 role = "model"
+
             elif role != "user":
                 continue
 
@@ -718,7 +665,13 @@ def ask_qadam_ai(messages, mode, grade):
                 )
             )
 
-        # 4. Gemini чатын құру
+        # 6. Соңғы сұрақты алу
+        last_message = messages[-1].get("content", "")
+
+        if not str(last_message).strip():
+            return None, "Сұрақ бос тұр."
+
+        # 7. Gemini чатын құру
         chat = client.chats.create(
             model="gemini-2.5-flash",
             history=history,
@@ -729,9 +682,7 @@ def ask_qadam_ai(messages, mode, grade):
             )
         )
 
-        # 5. Соңғы сұраққа жауап алу
-        last_message = messages[-1]["content"]
-
+        # 8. Жауап алу
         response = chat.send_message(
             message=str(last_message)
         )
@@ -739,7 +690,10 @@ def ask_qadam_ai(messages, mode, grade):
         answer = response.text
 
         if not answer:
-            return None, "Gemini бос жауап қайтарды. Қайталап көр."
+            return None, (
+                "Gemini бос жауап қайтарды. "
+                "Қайталап көріңіз."
+            )
 
         return answer, None
 
@@ -747,14 +701,24 @@ def ask_qadam_ai(messages, mode, grade):
 
         error_details = str(e)
 
-        # API кілтінің кездейсоқ көрсетілуіне жол бермеу
+        # API кілтін қорғау
         if "api_key" in error_details.lower():
             error_details = "API кілтіне қатысты қате."
 
+        elif "quota" in error_details.lower():
+            error_details = (
+                "Gemini API сұраныстарының лимиті аяқталған болуы мүмкін."
+            )
+
+        elif "permission" in error_details.lower():
+            error_details = (
+                "Gemini API рұқсатына қатысты қате."
+            )
+
         return None, (
             f"Gemini қатесі: {type(e).__name__}\n\n"
-            f"Толық мәлімет: {error_details[:500]}"
-        )
+            f"{error_details[:500]}"
+        )      
 
 
 # =====================================================
@@ -1645,8 +1609,193 @@ if st.session_state.user is not None:
         show_profile()
 
     show_footer()
+# =====================================================
+# 13. QADAM AI — ҚАЛҚЫМАЛЫ ЧАТ
+# =====================================================
 
-    show_floating_qadam_chat()
+def show_floating_qadam_chat():
+
+    # =================================================
+    # ЧАТ АШЫҚ БОЛСА
+    # =================================================
+
+    if st.session_state.qadam_chat_open:
+
+        with st.container(key="qadam_chat_open"):
+
+            # Чат тақырыбы
+            col1, col2 = st.columns([4, 1])
+
+            with col1:
+                st.markdown("### 🤖 QADAM AI")
+
+            with col2:
+
+                if st.button(
+                    "✖",
+                    key="close_qadam_chat"
+                ):
+
+                    st.session_state.qadam_chat_open = False
+                    st.rerun()
+
+            st.caption(
+                "Физика бойынша жеке AI көмекшісі"
+            )
+
+            # Сынып таңдау
+            grade = st.selectbox(
+                "Сынып",
+                [
+                    "7-сынып",
+                    "8-сынып",
+                    "9-сынып",
+                    "10-сынып",
+                    "11-сынып"
+                ],
+                index=2,
+                key="qadam_grade"
+            )
+
+            # Жұмыс режимі
+            mode = st.selectbox(
+                "Жұмыс режимі",
+                [
+                    "Тақырыпты түсіндіру",
+                    "Есепті шығару",
+                    "Формуланы түсіндіру",
+                    "Тестке дайындық"
+                ],
+                key="qadam_mode"
+            )
+
+            st.divider()
+
+            # =================================================
+            # ХАБАРЛАМАЛАР ТАРИХЫ
+            # =================================================
+
+            for message in st.session_state.qadam_messages:
+
+                with st.chat_message(message["role"]):
+
+                    st.markdown(
+                        message["content"]
+                    )
+
+            # =================================================
+            # СҰРАҚ ЕНГІЗУ
+            # =================================================
+
+            with st.form(
+                "qadam_chat_form",
+                clear_on_submit=True
+            ):
+
+                prompt = st.text_area(
+                    "Сұрағыңды жаз...",
+                    placeholder=(
+                        "Мысалы: Ньютонның бірінші заңы дегеніміз не?"
+                    ),
+                    height=80
+                )
+
+                submitted = st.form_submit_button(
+                    "Жіберу",
+                    use_container_width=True
+                )
+
+            # =================================================
+            # GEMINI-ГЕ СҰРАҚ ЖІБЕРУ
+            # =================================================
+
+            if submitted:
+
+                if not prompt.strip():
+
+                    st.warning(
+                        "Алдымен сұрақ енгіз."
+                    )
+
+                else:
+
+                    # Оқушы хабарламасын сақтау
+                    st.session_state.qadam_messages.append({
+                        "role": "user",
+                        "content": prompt.strip()
+                    })
+
+                    # AI жауабын алу
+                    with st.spinner(
+                        "QADAM AI жауап дайындауда..."
+                    ):
+
+                        answer, error = ask_qadam_ai(
+                            st.session_state.qadam_messages,
+                            mode,
+                            grade
+                        )
+
+                    # Қате болса
+                    if error:
+
+                        st.error(error)
+
+                        # Қате болғанда соңғы сұрақты
+                        # хабарламалар тарихында қалдырамыз.
+
+                    # Жауап сәтті болса
+                    else:
+
+                        st.session_state.qadam_messages.append({
+                            "role": "assistant",
+                            "content": answer
+                        })
+
+                    st.rerun()
+
+            st.divider()
+
+            # =================================================
+            # ЧАТТЫ ТАЗАЛАУ
+            # =================================================
+
+            if st.button(
+                "🗑 Чатты тазалау",
+                key="clear_qadam_chat",
+                use_container_width=True
+            ):
+
+                st.session_state.qadam_messages = [
+                    {
+                        "role": "assistant",
+                        "content": (
+                            "Сәлем! Мен QADAM AI көмекшісімін. "
+                            "Физикадан сұрағыңды жаза бер!"
+                        )
+                    }
+                ]
+
+                st.rerun()
+
+    # =================================================
+    # ЧАТ ЖАБЫҚ БОЛСА
+    # =================================================
+
+    else:
+
+        with st.container(
+            key="qadam_chat_closed"
+        ):
+
+            if st.button(
+                "🤖",
+                key="open_qadam_chat"
+            ):
+
+                st.session_state.qadam_chat_open = True
+                st.rerun()
+    
 
 
 # =====================================================
