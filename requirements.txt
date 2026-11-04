@@ -1,5 +1,6 @@
+
 streamlit>=1.40.0
 supabase
-openai>=1.0.0
 plotly
 numpy
+google-genai
