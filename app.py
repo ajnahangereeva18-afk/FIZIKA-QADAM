@@ -2248,7 +2248,7 @@ if st.session_state.user is not None:
 
         show_olympiad()
 
-   elif selected_navigation == "Виртуалды зертхана":
+    elif selected_navigation == "Виртуалды зертхана":
 
         show_virtual_lab_newton()
 
