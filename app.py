@@ -1484,6 +1484,174 @@ def show_placeholder(title, description):
 # =====================================================
 # 13. НЕГІЗГІ БЕТТЕР ЖӘНЕ SIDEBAR
 # =====================================================
+# =====================================================
+# 13. QADAM AI — ҚАЛҚЫМАЛЫ ЧАТ
+# =====================================================
+
+def show_floating_qadam_chat():
+
+    # =================================================
+    # ЧАТ АШЫҚ БОЛСА
+    # =================================================
+
+    if st.session_state.qadam_chat_open:
+
+        with st.container(key="qadam_chat_open"):
+
+            # Чат тақырыбы
+            col1, col2 = st.columns([4, 1])
+
+            with col1:
+                st.markdown("### 🤖 QADAM AI")
+
+            with col2:
+
+                if st.button(
+                    "✖",
+                    key="close_qadam_chat"
+                ):
+
+                    st.session_state.qadam_chat_open = False
+                    st.rerun()
+
+            st.caption(
+                "Физика бойынша жеке AI көмекшісі"
+            )
+
+            # Сынып таңдау
+            grade = st.selectbox(
+                "Сынып",
+                [
+                    "7-сынып",
+                    "8-сынып",
+                    "9-сынып",
+                    "10-сынып",
+                    "11-сынып"
+                ],
+                index=2,
+                key="qadam_grade"
+            )
+
+            # Жұмыс режимі
+            mode = st.selectbox(
+                "Жұмыс режимі",
+                [
+                    "Тақырыпты түсіндіру",
+                    "Есепті шығару",
+                    "Формуланы түсіндіру",
+                    "Тестке дайындық"
+                ],
+                key="qadam_mode"
+            )
+
+            st.divider()
+
+            # =================================================
+            # ХАБАРЛАМАЛАР ТАРИХЫ
+            # =================================================
+
+            for message in st.session_state.qadam_messages:
+
+                with st.chat_message(message["role"]):
+
+                    st.markdown(
+                        message["content"]
+                    )
+
+            # =================================================
+            # СҰРАҚ ЕНГІЗУ
+            # =================================================
+
+            with st.form(
+                "qadam_chat_form",
+                clear_on_submit=True
+            ):
+
+                prompt = st.text_area(
+                    "Сұрағыңды жаз...",
+                    placeholder=(
+                        "Мысалы: Ньютонның бірінші заңы дегеніміз не?"
+                    ),
+                    height=80
+                )
+
+                submitted = st.form_submit_button(
+                    "Жіберу",
+                    use_container_width=True
+                )
+
+            # =================================================
+            # GEMINI-ГЕ СҰРАҚ ЖІБЕРУ
+            # =================================================
+
+            if submitted:
+
+                if not prompt.strip():
+
+                    st.warning(
+                        "Алдымен сұрақ енгіз."
+                    )
+
+                else:
+
+                    # Оқушы хабарламасын сақтау
+                    st.session_state.qadam_messages.append({
+                        "role": "user",
+                        "content": prompt.strip()
+                    })
+
+                    # AI жауабын алу
+                    with st.spinner(
+                        "QADAM AI жауап дайындауда..."
+                    ):
+
+                        answer, error = ask_qadam_ai(
+                            st.session_state.qadam_messages,
+                            mode,
+                            grade
+                        )
+
+                    # Қате болса
+                    if error:
+
+                        st.error(error)
+
+                        # Қате болғанда соңғы сұрақты
+                        # хабарламалар тарихында қалдырамыз.
+
+                    # Жауап сәтті болса
+                    else:
+
+                        st.session_state.qadam_messages.append({
+                            "role": "assistant",
+                            "content": answer
+                        })
+
+                    st.rerun()
+
+            st.divider()
+
+            # =================================================
+            # ЧАТТЫ ТАЗАЛАУ
+            # =================================================
+
+            if st.button(
+                "🗑 Чатты тазалау",
+                key="clear_qadam_chat",
+                use_container_width=True
+            ):
+
+                st.session_state.qadam_messages = [
+                    {
+                        "role": "assistant",
+                        "content": (
+                            "Сәлем! Мен QADAM AI көмекшісімін. "
+                            "Физикадан сұрағыңды жаза бер!"
+                        )
+                    }
+                ]
+
+                st.rerun()
 
 if st.session_state.user is not None:
 
