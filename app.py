@@ -2252,8 +2252,6 @@ if st.session_state.user is not None:
 
         show_virtual_lab_newton()
 
-        show_physics_world()
-
     elif selected_navigation == "QADAM ШЕШІМІ":
      
         show_qadam_solution()
