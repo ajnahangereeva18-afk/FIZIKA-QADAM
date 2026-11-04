@@ -1510,12 +1510,30 @@ def show_profile():
 # =====================================================
 # 12. ӘЗІРЛЕНУ ҮСТІНДЕГІ БӨЛІМДЕР
 # =====================================================
-
 def show_placeholder(title, description):
+
+    st.title(title)
+
+    st.markdown(f"""
+    <div class="main-banner">
+        <div class="banner-label">FIZIKA QADAM</div>
+        <div class="banner-title">
+            {html.escape(title)}
+        </div>
+        <div class="banner-text">
+            {html.escape(description)}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.info(
+        "Бұл бөлім әзірлену үстінде. "
+        "Келесі кезеңдерде функционалы қосылады."
+    )
+
 # ============================================================
 # QADAM OLYMPIAD — ОЛИМПИАДА БӨЛІМІ
 # ============================================================
-
 def show_olympiad():
 
     st.title("🏆 QADAM OLYMPIAD")
@@ -1948,10 +1966,7 @@ if st.session_state.user is not None:
 
     elif selected_navigation == "Олимпиада есептері":
 
-        show_placeholder(
-            "🏅 Олимпиада есептері",
-            "Олимпиадалық деңгейдегі физика есептерін талдаңыз."
-        )
+    show_olympiad()
 
     elif selected_navigation == "Виртуалды зертхана":
 
