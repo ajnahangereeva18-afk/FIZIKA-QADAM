@@ -1787,7 +1787,7 @@ def show_floating_qadam_chat():
         with st.container(
             key="qadam_chat_closed"
         ):
-
+            
             if st.button(
                 "🤖",
                 key="open_qadam_chat"
@@ -2080,3 +2080,9 @@ else:
                     )
 
     show_footer()
+    # =====================================================
+# QADAM AI ЧАТЫН ЭКРАНҒА ШЫҒАРУ
+# =====================================================
+
+if st.session_state.user is not None:
+    show_floating_qadam_chat()
