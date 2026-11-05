@@ -2351,9 +2351,9 @@ if st.session_state.user is not None:
 # 14. ЖҮЙЕГЕ КІРУ ЖӘНЕ ТІРКЕЛУ
 # =====================================================
 
-   else:
+else:
 
-       show_header()
+    show_header()
 
     st.markdown("""
     <div class="main-banner">
