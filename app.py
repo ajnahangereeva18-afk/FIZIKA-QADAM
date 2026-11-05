@@ -2137,16 +2137,15 @@ def show_virtual_lab_newton():
         "Қорытындыны тексеруге жіберу",
         key="check_newton_conclusion"
     ):
-
-        if len(conclusion.strip()) < 15:
-            st.warning(
-                "Қорытындыны толығырақ жаз."
-            )
-        else:
-            st.success(
-                "Қорытындың енгізілді! "
-                "Мұғаліммен бірге тәжірибе нәтижесін талда."
-            )
+    if len(conclusion.strip()) < 15:
+        st.warning(
+            "Қорытындыны толығырақ жаз."
+        )
+    else:
+        st.success(
+            "Қорытындың енгізілді! "
+            "Мұғаліммен бірге тәжірибе нәтижесін талда."
+        )
 
     st.divider()
 
@@ -2158,11 +2157,11 @@ def show_virtual_lab_newton():
     Бұл — Ньютонның екінші заңы.
     """)
 
-        formula = st.text_input(
-            "Формула:",
-            placeholder="Мысалы: F = ma",
-            key="qadam_formula"
-        )
+    formula = st.text_input(
+        "Формула:",
+        placeholder="Мысалы: F = ma",
+        key="qadam_formula"
+    )
 
     # 5-ҚАДАМ
     with st.expander("5-қадам. 🧮 ЕСЕПТЕУ"):
@@ -2172,8 +2171,7 @@ def show_virtual_lab_newton():
             placeholder="a = F / m\n a = 10 / 2 = 5 м/с²",
             key="qadam_calculation"
         )
-
-    # 6-ҚАДАМ
+        # 6-ҚАДАМ
     with st.expander("6-қадам. ✅ ТЕКСЕРУ"):
 
         answer = st.text_input(
