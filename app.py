@@ -2137,15 +2137,15 @@ def show_virtual_lab_newton():
         "Қорытындыны тексеруге жіберу",
         key="check_newton_conclusion"
     ):
-    if len(conclusion.strip()) < 15:
-        st.warning(
-            "Қорытындыны толығырақ жаз."
-        )
-    else:
-        st.success(
-            "Қорытындың енгізілді! "
-            "Мұғаліммен бірге тәжірибе нәтижесін талда."
-        )
+
+    if st.button("Қорытындыны тексеру", key="check_conclusion"):
+        if len(conclusion.strip()) < 15:
+            st.warning("Қорытындыны толығырақ жаз.")
+        else:
+            st.success(
+                "Қорытындың енгізілді! "
+                "Мұғаліммен бірге тәжірибе нәтижесін талда."
+            )
 
     st.divider()
 
@@ -2162,7 +2162,7 @@ def show_virtual_lab_newton():
         placeholder="Мысалы: F = ma",
         key="qadam_formula"
     )
-
+    
     # 5-ҚАДАМ
     with st.expander("5-қадам. 🧮 ЕСЕПТЕУ"):
 
