@@ -2125,7 +2125,7 @@ def show_virtual_lab_newton():
     4. Тәжірибе нәтижесі Ньютонның екінші заңын растай ма?
     """)
 
-       conclusion = st.text_area(
+    conclusion = st.text_area(
         "Өз қорытындыңды жаз:",
         placeholder="Тәжірибе барысында мен ... байқадым. "
                     "Қорытындылай келе ...",
