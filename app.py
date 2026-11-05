@@ -2125,7 +2125,7 @@ def show_virtual_lab_newton():
     4. Тәжірибе нәтижесі Ньютонның екінші заңын растай ма?
     """)
 
-    conclusion = st.text_area(
+       conclusion = st.text_area(
         "Өз қорытындыңды жаз:",
         placeholder="Тәжірибе барысында мен ... байқадым. "
                     "Қорытындылай келе ...",
@@ -2137,8 +2137,6 @@ def show_virtual_lab_newton():
         "Қорытындыны тексеруге жіберу",
         key="check_newton_conclusion"
     ):
-
-    if st.button("Қорытындыны тексеру", key="check_conclusion"):
         if len(conclusion.strip()) < 15:
             st.warning("Қорытындыны толығырақ жаз.")
         else:
@@ -2156,7 +2154,7 @@ def show_virtual_lab_newton():
     ал дененің массасына кері пропорционал.
     Бұл — Ньютонның екінші заңы.
     """)
-
+    
     formula = st.text_input(
         "Формула:",
         placeholder="Мысалы: F = ma",
